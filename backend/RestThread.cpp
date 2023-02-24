@@ -10,10 +10,13 @@ using namespace web::http::experimental::listener;
 #include <NetworkSummary.hpp>
 #include <PrefetcherThread.hpp>
 #include <QString>
+#include <QDebug>
 #include <iostream>
 #include <map>
 #include <set>
 #include <string>
+#include <AnalysisThread.hpp>
+#include <Hopness.hpp>
 using namespace std;
 
 #define TRACE(msg)            cout << msg
@@ -28,6 +31,83 @@ void display_json(
    cout << prefix << jvalue.serialize() << endl;
 }
 
+web::http::status_code GET_nodeinfo(const QString& resource, json::value& body, QString& error_string)
+{
+    QString node_pubkey = resource.mid(11);
+    qWarning() <<"node_info/"<< node_pubkey;
+    NetworkSummary* network = PrefetcherThread::getInstance()->_currentNetwork;
+    if (network == nullptr)
+    {
+        error_string = "Network graph informaton not available, please retry later.";
+        return status_codes::PreconditionFailed;
+    }
+
+    int o_n_edges=0;
+    uint64_t o_cap_min = ULONG_MAX, o_cap_max=0, o_cap_avg=0, o_cap_ttl=0;
+    int o_peers=0;
+    int node_rank = network->node_index.value(node_pubkey, -1);
+    if(node_rank<0)
+    {
+        error_string = QString("Unknown node public key %1.").arg(node_pubkey);
+        return status_codes::PreconditionFailed;
+    }
+    bool lns_peer = node_rank==network->lns_noderank;
+
+    const Node& node = network->nodes[node_rank];
+    body["edges"] = node.edges.size();
+    QSet<int> peer_ranks;
+    for(int edge_rank : node.edges)
+    {
+        const Edge& edge = network->edges[edge_rank];
+        int other_node_rank = edge.node1==node_rank? edge.node2 : edge.node1;
+        peer_ranks.insert(other_node_rank);
+        uint64_t edge_cap = edge.capacity;
+        o_cap_min =std::min(o_cap_min, edge_cap);
+        o_cap_max = std::max(o_cap_max, edge_cap);
+        o_cap_ttl += edge_cap;
+        if(other_node_rank == network->lns_noderank)
+            lns_peer = true;
+        o_n_edges++;
+    }
+    o_cap_avg = o_cap_ttl/node.edges.size();
+    o_peers = peer_ranks.size();
+
+    body["edges"] = o_n_edges;
+    body["peers"] = o_peers;
+    body["cap_min"] = o_cap_min;
+    body["cap_max"] = o_cap_max;
+    body["cap_avg"] = o_cap_avg;
+    body["cap_total"] = o_cap_ttl;
+    body["lns_peer"] = lns_peer;
+    return status_codes::OK;
+}
+
+web::http::status_code GET_nodeadvice(const QString& resource, json::value& body, QString& error_string)
+{
+    QStringList args = resource.mid(13).split("/");
+    QString node_pubkey = args[0];
+    const int cap = atoi(args[1].toUtf8().constData());
+
+    NetworkSummary* network = PrefetcherThread::getInstance()->_currentNetwork;
+    if (network == nullptr)
+    {
+        error_string = "Network graph informaton not available, please retry later.";
+        return status_codes::PreconditionFailed;
+    }
+
+    Result result;
+    AnalysisThread::analyseHops(*network, node_pubkey, cap, result);
+
+    body["node0"] = json::value(node_pubkey.toUtf8().constData());
+    body["node2"] = json::value(network->nodes[result.node2].pubKey.toUtf8().constData());
+    body["node3"] = json::value(network->nodes[result.node3].pubKey.toUtf8().constData());
+    body["cap0"] = cap;
+    body["cap2"] = result.cap2;
+    body["cap3"] = result.cap3;
+
+    return status_codes::OK;
+}
+
 void handle_get(http_request request)
 {
    TRACE("\nhandle GET\n");
@@ -35,8 +115,9 @@ void handle_get(http_request request)
    cout <<"b"<<request.relative_uri().query()<<endl;
    cout <<"a"<<request.relative_uri().resource().to_string() <<endl;*/
 
-   const std::string resource = request.relative_uri().resource().to_string();
+   const QString resource(request.relative_uri().resource().to_string().c_str());
    http_response answer = http_response(status_codes::OK);
+   //Allow requests from a different IP address
    answer.headers().add("Access-Control-Allow-Origin", "*");
    auto body = json::value();
    if(resource == "/block_height")
@@ -55,10 +136,33 @@ void handle_get(http_request request)
        body["nodes"] = network->nodes.size();
        body["edges"] = network->edges.size();
        body["capacity"] = network->total_capacity;
+       body["zbf_nodes"] = network->zbfNodes;
+       body["zbf_edges"] = network->zbfEdges;
    }
+   else if(resource.startsWith("/node_info/"))
+      {
+         QString error_string;
+         auto status = GET_nodeinfo(resource, body, error_string);
+         if(status != status_codes::OK)
+         {
+           request.reply(status);
+           return;
+         }
+      }
+   else if(resource.startsWith("/node_advice/"))
+      {
+         QString error_string;
+         auto status = GET_nodeadvice(resource, body, error_string);
+         if(status != status_codes::OK)
+         {
+           request.reply(status);
+           return;
+         }
+      }
    /*
     * TODO:
     * GET node_info(pubkey)
+    * is_peer(pubkey)
     * node_advice(pubkey, capacity)
    */
    else

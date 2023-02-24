@@ -136,15 +136,17 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
       //analyze zbf for the channel
       auto is_zbf = [](const QJsonValue& policy) -> bool
       {
-        auto object = policy.toObject();
-        if(object.value("fee_base_msat").toInt() == 0)
+        auto fee = atoi(policy.toObject().value("fee_base_msat").toString().toUtf8().constData());
+        if(fee == 0)
           return true;
-        return true;
+        return false;
       };
       if(node1.isZbf && !is_zbf(policy1))
           node1.isZbf = false;
       if(node2.isZbf && !is_zbf(policy2))
           node2.isZbf = false;
+      if(!(is_zbf(policy1) && is_zbf(policy2)))
+          edge.isZbf = false;
 
 
       ++rank;
@@ -156,6 +158,17 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
                .arg(network->total_capacity/100000000.0));
 
   network->lns_noderank = network->node_index.value(config->lns_pubkey, -1);
+
+  for (const Node& node : network->nodes)
+  {
+      if(node.isZbf)
+          ++network->zbfNodes;
+  }
+  for (const Edge& edge : network->edges)
+  {
+      if(edge.isZbf)
+          ++network->zbfEdges;
+  }
 
 
   //TODO Add lock to avide deletig a result that is still used in an analyse

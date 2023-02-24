@@ -25,7 +25,7 @@ AnalysisThread::AnalysisThread()
 
 
 //analyse nodes found for each hop number
-void AnalysisThread::_analyseHops(const NetworkSummary& networkRef, const QString& node0_pubkey, int min_capacity, Hopness& /*result*/)
+void AnalysisThread::analyseHops(const NetworkSummary& networkRef, const QString& node0_pubkey, int min_capacity, Result& result)
 {
     //Compare 2 results of capacity at each hop leve
     //Returns capacity that is nearer relative to ref
@@ -340,6 +340,8 @@ void AnalysisThread::_analyseHops(const NetworkSummary& networkRef, const QStrin
       qWarning() << QString("Best candidate at 2 hops %1 brings %2 BTC nearer")
                     .arg(networkRef.nodes[candidates[best_candidate]].pubKey)
                     .arg(best_nearer_cap/100000000.0);
+      result.node2 = candidates[best_candidate];
+      result.cap2 = best_nearer_cap;
     }
 
     {
@@ -378,6 +380,8 @@ void AnalysisThread::_analyseHops(const NetworkSummary& networkRef, const QStrin
     qWarning() << QString("Best candidate at 3 hops %1 brings %2 BTC nearer")
                   .arg(networkRef.nodes[candidates[best_candidate]].pubKey)
                   .arg(best_nearer_cap/100000000.0);
+    result.node3 = candidates[best_candidate];
+    result.cap3 = best_nearer_cap;
     }
 
     //find at which hop depth a node is
@@ -407,8 +411,17 @@ void AnalysisThread::newWork(const QString& node0)
    NetworkSummary* network = PrefetcherThread::getInstance()->_currentNetwork;
    if(!network)
      return;
-   Hopness result;
-  _analyseHops(*network, node0, 2500000, result);
+  Result result;
+  analyseHops(*network, node0, 2500000, result);
+}
+
+void AnalysisThread::fetchNodeInfo(const QString& pubkey, int workId)
+{
+    NetworkSummary* network = PrefetcherThread::getInstance()->_currentNetwork;
+    if(!network)
+      return;
+
+
 }
 
 AnalysisThread* AnalysisThread::getInstance()

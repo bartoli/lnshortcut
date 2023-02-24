@@ -66,6 +66,9 @@ public:
     int lns_noderank;
 
     //Pre-fetched analysis data
+    int zbfNodes = 0;
+    int zbfEdges = 0;
+
 
 };
 

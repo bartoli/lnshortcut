@@ -4,13 +4,13 @@
 /*
  * Options for an analyse
  */
-class Options
+/*class Options
 {
 public:
     Options();
 
     //hop level at which connection candidates are searched.
     int candidates_depth=3;
-};
+};*/
 
 #endif // OPTIONS_H

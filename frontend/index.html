@@ -3,21 +3,24 @@
     <tr><td colspan="4" align="center"><h1>LN Shortcut</h1></td></tr>
     <tr><td><a href="/index.html">Home</a></td><td>Channel advisor</td><td>Node Rating</td><td><a href="https://discord.gg/gPaqEafvAF">Contact us (Discord).</a></td></tr>
     <tr><td colspan="4">
+<br>
 We try to link to the furthest nodes on the Lightning Network, making everyone nearer from another.<br>
-Our main node is currently at a maximum of 3 hops from most nodes that have 20+ channels, on Clearnet and Tor network, with 2M+ sats.<br>
 Open a channel to us to benefit from this connectedness.<br>
+<br>
+Use this page to obtain statistics on the Lightning network and your node.<br>
 By connecting to us, you also gain access to our channel advisor to optimize the use of your liquidity for a well connected network.
 <div id="bh"></div><script type="text/javascript">update_block_height();</script>
 <div id="nh"></div><script type="text/javascript">update_network_info();</script>
+<div id="analysisForm">
+    <form>
+      Node pubkey:<input type="text" id="pubkey"><input type="button" value="Analyse" onclick="node_stats()">
+    </form>
+</div>
+<div id="analysisResult"></div>
 
 <h3>Coming soon, development is in progress</h3>
 
-Current satus (02-dec-22):<br>
-Lightning node : the 'production node' is being connected, starting from scratch with the channel adviser to optimize connnectivity. The beta LNShortcut node will eventually disappear.<br>
-Advisor : currently automating the scripts that were previouslty launched manually.
-</td><td></tr>
-</table>
 
-//document.write(response);
-//document.write(json);
+</td></tr>
+</table>
 </script>
