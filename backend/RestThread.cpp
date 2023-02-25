@@ -38,8 +38,8 @@ web::http::status_code GET_nodeinfo(const QString& resource, json::value& body, 
     NetworkSummary* network = PrefetcherThread::getInstance()->_currentNetwork;
     if (network == nullptr)
     {
-        error_string = "Network graph informaton not available, please retry later.";
-        return status_codes::PreconditionFailed;
+        body["error"] = json::value("Network graph informaton not available, please retry later.");
+        return status_codes::OK;
     }
 
     int o_n_edges=0;
@@ -48,8 +48,8 @@ web::http::status_code GET_nodeinfo(const QString& resource, json::value& body, 
     int node_rank = network->node_index.value(node_pubkey, -1);
     if(node_rank<0)
     {
-        error_string = QString("Unknown node public key %1.").arg(node_pubkey);
-        return status_codes::PreconditionFailed;
+        body["error"] = json::value(QString("Unknown node public key %1.").arg(node_pubkey).toUtf8().constData());
+        return status_codes::OK;
     }
     bool lns_peer = node_rank==network->lns_noderank;
 
@@ -72,6 +72,10 @@ web::http::status_code GET_nodeinfo(const QString& resource, json::value& body, 
     o_cap_avg = o_cap_ttl/node.edges.size();
     o_peers = peer_ranks.size();
 
+    //tor and/tor clearnet?
+    body["on_tor"] = node.tor;
+    body["on_clearnet"] = node.clearnet;
+
     body["edges"] = o_n_edges;
     body["peers"] = o_peers;
     body["cap_min"] = o_cap_min;
@@ -79,6 +83,7 @@ web::http::status_code GET_nodeinfo(const QString& resource, json::value& body, 
     body["cap_avg"] = o_cap_avg;
     body["cap_total"] = o_cap_ttl;
     body["lns_peer"] = lns_peer;
+
     return status_codes::OK;
 }
 
@@ -86,14 +91,44 @@ web::http::status_code GET_nodeadvice(const QString& resource, json::value& body
 {
     QStringList args = resource.mid(13).split("/");
     QString node_pubkey = args[0];
-    const int cap = atoi(args[1].toUtf8().constData());
+    int cap = atoi(args[1].toUtf8().constData());
 
+    //Is there a prefetched network graph yet?
     NetworkSummary* network = PrefetcherThread::getInstance()->_currentNetwork;
     if (network == nullptr)
     {
-        error_string = "Network graph informaton not available, please retry later.";
-        return status_codes::PreconditionFailed;
+        body["error"] = json::value("Network graph informaton not available, please retry later.");
+        return status_codes::OK;
     }
+    int node_rank = network->node_index[node_pubkey];
+    //Is it a lns peer? Is capacity not more than capacity connected to lns?
+    {
+        int lns_capacity = 0;
+        const Node& node = network->nodes[node_rank];
+        int max_cap = 0;
+        for(const int edge_rank : node.edges)
+        {
+            const Edge& edge = network->edges[edge_rank];
+            int other_node_rank = edge.node1 == node_rank? edge.node2 : edge.node1;
+            max_cap = std::max(max_cap, edge.capacity);
+            if(other_node_rank == network->lns_noderank)
+                lns_capacity += edge.capacity;
+        }
+        if(node_rank != network->lns_noderank && lns_capacity<cap)
+        {
+            body["error"] = json::value("Can't advise for channels with more capacity than the sum of the channels connected to LNSHortcut");
+            return status_codes::OK;
+        }
+        // Adjust analysed capacity to max existing capacity.
+        // It makes no sense to analyse for more than the curent bigger channel,
+        // since we need at least 2 channels at that capacity to actually route that size
+        // For the general user, it could happen if they have enough cap connected to LNS, but in multiple channels.
+        // For lns node, it can happen when we analyse for a bigger capacity than the existing channels.
+        // There are no nodes to reach with at least that capacity, so we are looking at empty lists of reached nodes at any hop level
+        // -> estimate next channel as if it is the masx size of current channels
+        cap = std::min(cap, max_cap);
+    }
+
 
     Result result;
     AnalysisThread::analyseHops(*network, node_pubkey, cap, result);

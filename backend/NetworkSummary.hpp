@@ -18,6 +18,8 @@ public:
     //std::vector<EdgeDirection> edges_direction; //is each edge bringing nearer, further, or at same dist from us?
     //does the node have a clearnet address
     bool clearnet=false;
+    //does the node have a tor address
+    bool tor=false;
     //does te node have 0 base fee on his side of all channels
     bool isZbf=true;
     //smallest channel size of the node

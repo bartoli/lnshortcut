@@ -26,7 +26,7 @@ function update_block_height()
   function _apply(json)
   {
     const div = document.getElementById('bh');
-    div.textContent = json.height;
+    div.textContent = "The Lightning Network at block Height "+json.height+":";
   }
   getRestJson("block_height", _apply);  
 }
@@ -48,12 +48,47 @@ function node_stats()
   function _apply(json)
   {
     const div = document.getElementById('analysisResult');
-    div.innerHTML = json.edges+" edges with "+json.peers+" peers<br>"
-     + "Min/Max/Avg/Total capacity (sats): "+json.cap_min+"/"+json.cap_max+"/"+json.cap_avg+"/"+json.cap_total+"<br>"
-     + "Connected to LNShortcut node: "+(json.lns_peer? "Yes" : "No")+"<br>";
+    if( json.hasOwnProperty('error'))
+    {
+      div.innerHTML = json.error;
+    }
+    else
+    {
+      var clearnet_val;
+      if(json.on_tor)
+      {
+        clearnet_val = json.on_clearnet? "Both" : "Tor Only";
+      }
+      else
+        clearnet_val = "Clearnet only";
+      div.innerHTML = "<table border=1><tr><td>"+json.edges+" edges with "+json.peers+" peers<br>"
+      + "Min/Max/Avg/Total capacity (sats): "+json.cap_min+"/"+json.cap_max+"/"+json.cap_avg+"/"+json.cap_total+"<br>"
+      + "Connected to LNShortcut node: "+(json.lns_peer? "Yes" : "No")+"<br>"
+      + "Clearnet / Tor : "+clearnet_val+"<br>"
+      +"</td></tr></table><br>";
+      
+    }    
   }
   var pubkey = document.getElementById('pubkey').value;
   getRestJson("node_info/"+pubkey, _apply); 
 }
 
-//update_block_height();
+function node_advice()
+{
+  function _apply(json)
+  {
+    const div = document.getElementById('channelAdvice');
+    if( json.hasOwnProperty('error'))
+    {
+      div.innerHTML = json.error;
+    }
+    else
+    {
+      div.innerHTML = "Hop2: "+json.node2+" brings "+json.cap2+" sats nearer.<br>"
+                    + "Hop3: "+json.node3+" brings "+json.cap3+" sats nearer.<br>";
+    }
+  }
+  var pubkey = document.getElementById('pubkey').value;
+  var capacity = document.getElementById('capacity').value;
+  getRestJson("node_advice/"+pubkey+"/"+capacity, _apply); 
+}

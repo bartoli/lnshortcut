@@ -56,14 +56,21 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
 
       //check if there is a clearnet address
       bool clearnet = false;
+      bool tor = false;
       for(const QJsonValue& address : node_addresses)
       {
           const QJsonObject addr_obj = address.toObject();
-          if(addr_obj.value("addr").toString().count('.')==3)
+          const QString addr_str = addr_obj.value("addr").toString();
+          if(addr_str.count('.')==3)
           {
               clearnet = true;
-              break;
           }
+          if(addr_str.contains("onion"))
+          {
+              tor = true;
+          }
+          if(tor && clearnet)
+              break;
       }
 
       /*for(const QJsonValue& address : node_addresses)
@@ -79,6 +86,7 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
       Node& node(network->nodes.back());
       node.pubKey = pubkey;
       node.clearnet = clearnet;
+      node.tor = tor;
       node.alias = node_object.value("alias").toString();
       network->node_index[node.pubKey] = rank;
       ++rank;
