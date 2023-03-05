@@ -26,7 +26,7 @@ function update_block_height()
   function _apply(json)
   {
     const div = document.getElementById('bh');
-    div.textContent = "The Lightning Network at block Height "+json.height+":";
+    div.textContent = "The Lightning Network at block height "+json.height+":";
   }
   getRestJson("block_height", _apply);  
 }

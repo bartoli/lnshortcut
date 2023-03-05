@@ -1,0 +1,17 @@
+<script type="text/javascript" src="util.js"></script>
+<script type="text/javascript">
+function check_https()
+{
+  function _apply(json)
+  {
+    const div = document.getElementById('https_test_result');
+    div.textContent = json.passed? "OK" : "Failed";
+  }
+  getRestJson("https_test", _apply);  
+}
+
+</script>
+HTTPS connection to the backend: <div id="https_test_result"></div><script type="text/javascript">check_https();</script>
+The backend uses a self-signed certifiacte for HTTPS support of the REST api (for now). Your browser might block access to it.
+Try manually acessing <a href="https://79.87.88.235:4343/https_test">https://79.87.88.235:4343/https_test</a>.
+If your browser warns you about the ssl certificate, tell it to accept it then reload the website.

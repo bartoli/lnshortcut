@@ -192,6 +192,11 @@ void handle_get(http_request request)
            return;
          }
       }
+   else if(resource.startsWith("/https_test"))
+      {
+         auto status = status_codes::OK;
+         body["passed"]=true;
+      }
    /*
     * TODO:
     * GET node_info(pubkey)
