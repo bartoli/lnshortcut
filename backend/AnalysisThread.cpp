@@ -30,7 +30,7 @@ void AnalysisThread::analyseHops(const NetworkSummary& networkRef, const QString
     //Compare 2 results of capacity at each hop leve
     //Returns capacity that is nearer relative to ref
     //Note: asumes ref is before a connection that r2 has, so it can only be better, and r2 has no nodes 'further'
-    auto compare_results = [](const QList<qint64>& ref, const QList<qint64>& r2) -> qint64
+    auto compare_results = [](const QList<qint64>& ref, const QList<qint64>& r2) -> quint64
     {
       qint64 nearer_capacity=0;
       for (int h=0;h<ref.size();++h)
@@ -303,86 +303,54 @@ void AnalysisThread::analyseHops(const NetworkSummary& networkRef, const QString
     ReachTree refTree;
     Hopness refResult;
     capacity_per_hop(refTree, refResult, min_capacity);
-    {
-      std::vector<int>& candidates = base_reach_tree[config->candidates_depth];
-      qWarning() << QString("Analysing %1 candidates").arg(candidates.size());
-      /*for(size_t i=0;i<candidates.size();++i)
-      {
-          //TODO : use 4 threads to make this part faster? a mutex on the result insert should be enough?
-          if(network.nodes[candidates[i]].clearnet && network.nodes[candidates[i]].min_chan_size<=min_capacity&& !config->ignored_endpoint_nodes.contains(network.nodes[candidates[i]].pubKey))
-            reachable_capacity.insert(outwards_capacity(candidates[i]), candidates[i]);
-      }
-      int chosen_node_rank =reachable_capacity.last();
-      qWarning() << QString("Best candidate %1 brings %2 sats nearer")
-                    .arg(network.nodes[chosen_node_rank].pubKey)
-                    .arg(reachable_capacity.lastKey());*/
 
-      //Do full hops analyse for each candidate
-      int best_candidate=-1;
-      qint64 best_capacity = 0;
-      qint64 best_nearer_cap = 0;
-
-      for(size_t i=0;i<candidates.size();++i)
-      {
-          if(networkRef.nodes[candidates[i]].clearnet && networkRef.nodes[candidates[i]].minChanSize<=min_capacity&& !config->ignored_endpoint_nodes.contains(networkRef.nodes[candidates[i]].pubKey))
-          {
-            ReachTree tmp_reach_tree;
-            Hopness tmp_result;
-            capacity_per_hop(tmp_reach_tree, tmp_result, min_capacity, std::vector<int>(1,candidates[i]));
-            qint64 nearer_cap = compare_results(refResult.capacities, tmp_result.capacities);
-            if(nearer_cap > best_nearer_cap)
-            {
-                best_nearer_cap = nearer_cap;
-                best_candidate = i;
-            }
-          }
-      }
-      qWarning() << QString("Best candidate at 2 hops %1 brings %2 BTC nearer")
-                    .arg(networkRef.nodes[candidates[best_candidate]].pubKey)
-                    .arg(best_nearer_cap/100000000.0);
-      result.node2 = candidates[best_candidate];
-      result.cap2 = best_nearer_cap;
-    }
-
+    auto compare_candidates = [&config, &min_capacity, &compare_results, &capacity_per_hop, &refResult]
+            (const std::vector<int>& cand,const NetworkSummary& net_ref, uint64_t& best_nearer_cap, int& best_candidate)
     {
-    std::vector<int>& candidates = base_reach_tree[config->candidates_depth+1];
-    qWarning() << QString("Analysing %1 candidates").arg(candidates.size());
-    /*for(size_t i=0;i<candidates.size();++i)
-    {
-        //TODO : use 4 threads to make this part faster? a mutex on the result insert should be enough?
-        if(network.nodes[candidates[i]].clearnet && network.nodes[candidates[i]].min_chan_size<=min_capacity&& !config->ignored_endpoint_nodes.contains(network.nodes[candidates[i]].pubKey))
-          reachable_capacity.insert(outwards_capacity(candidates[i]), candidates[i]);
-    }
-    int chosen_node_rank =reachable_capacity.last();
-    qWarning() << QString("Best candidate %1 brings %2 sats nearer")
-                  .arg(network.nodes[chosen_node_rank].pubKey)
-                  .arg(reachable_capacity.lastKey());*/
-
-    //Do full hops analyse for each candidate
-    int best_candidate=-1;
-    qint64 best_capacity = 0;
-    qint64 best_nearer_cap = 0;
-    for(size_t i=0;i<candidates.size();++i)
-    {
-        if(networkRef.nodes[candidates[i]].clearnet && networkRef.nodes[candidates[i]].minChanSize<=min_capacity&& !config->ignored_endpoint_nodes.contains(networkRef.nodes[candidates[i]].pubKey))
+        qWarning() << QString("Analysing %1 candidates").arg(cand.size());
+        /*for(size_t i=0;i<candidates.size();++i)
         {
-          ReachTree tmp_reach_tree;
-          Hopness tmp_result;
-          capacity_per_hop(tmp_reach_tree, tmp_result, min_capacity, std::vector<int>(1,candidates[i]));
-          qint64 nearer_cap = compare_results(refResult.capacities, tmp_result.capacities);
-          if(nearer_cap > best_nearer_cap)
-          {
-              best_nearer_cap = nearer_cap;
-              best_candidate = i;
-          }
+            //TODO : use 4 threads to make this part faster? a mutex on the result insert should be enough?
+            if(network.nodes[candidates[i]].clearnet && network.nodes[candidates[i]].min_chan_size<=min_capacity&& !config->ignored_endpoint_nodes.contains(network.nodes[candidates[i]].pubKey))
+              reachable_capacity.insert(outwards_capacity(candidates[i]), candidates[i]);
         }
-    }
-    qWarning() << QString("Best candidate at 3 hops %1 brings %2 BTC nearer")
-                  .arg(networkRef.nodes[candidates[best_candidate]].pubKey)
-                  .arg(best_nearer_cap/100000000.0);
-    result.node3 = candidates[best_candidate];
-    result.cap3 = best_nearer_cap;
-    }
+        int chosen_node_rank =reachable_capacity.last();
+        qWarning() << QString("Best candidate %1 brings %2 sats nearer")
+                      .arg(network.nodes[chosen_node_rank].pubKey)
+                      .arg(reachable_capacity.lastKey());*/
+
+        best_candidate = -1;
+        best_nearer_cap = 0;
+        for(size_t i=0;i<cand.size();++i)
+        {
+            int node_rank = cand[i];
+            const Node& cand_node = net_ref.nodes[node_rank];
+            if(net_ref.nodes[node_rank].clearnet && cand_node.minChanSize<=min_capacity&& !config->ignored_endpoint_nodes.contains(cand_node.pubKey))
+            {
+              ReachTree tmp_reach_tree;
+              Hopness tmp_result;
+              capacity_per_hop(tmp_reach_tree, tmp_result, min_capacity, std::vector<int>(1, node_rank));
+              uint64_t nearer_cap = compare_results(refResult.capacities, tmp_result.capacities);
+              if(nearer_cap > best_nearer_cap)
+              {
+                  best_nearer_cap = nearer_cap;
+                  best_candidate = node_rank;
+              }
+            }
+        }
+        qWarning() << QString("Best candidate %1 brings %2 BTC nearer")
+                      .arg(net_ref.nodes[best_candidate].pubKey)
+                      .arg(best_nearer_cap/100000000.0);
+    };
+
+
+    std::thread t2([&](){compare_candidates(base_reach_tree[config->candidates_depth], networkRef, result.cap2, result.node2);});
+    std::thread t3([&](){compare_candidates(base_reach_tree[config->candidates_depth+1], networkRef, result.cap3, result.node3);});
+      //Do full hops analyse for each candidate
+/*
+      compare_candidates(base_reach_tree[config->candidates_depth+1], networkRef, result.cap3, result.node3);*/
+    t2.join();
+    t3.join();
 
     //find at which hop depth a node is
     /*
@@ -413,15 +381,6 @@ void AnalysisThread::newWork(const QString& node0)
      return;
   Result result;
   analyseHops(*network, node0, 2500000, result);
-}
-
-void AnalysisThread::fetchNodeInfo(const QString& pubkey, int workId)
-{
-    NetworkSummary* network = PrefetcherThread::getInstance()->_currentNetwork;
-    if(!network)
-      return;
-
-
 }
 
 AnalysisThread* AnalysisThread::getInstance()

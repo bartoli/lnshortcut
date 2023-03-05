@@ -34,7 +34,7 @@ HEADERS += \
     WorkLauncher.hpp
 
 #link for cpprest
-LIBS += -lcpprest -lcrypto
+LIBS += -lcpprest -lssl -lcrypto
 
 FORMS += \
     main.ui

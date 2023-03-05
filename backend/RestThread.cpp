@@ -31,7 +31,7 @@ void display_json(
    cout << prefix << jvalue.serialize() << endl;
 }
 
-web::http::status_code GET_nodeinfo(const QString& resource, json::value& body, QString& error_string)
+web::http::status_code GET_nodeinfo(const QString& resource, json::value& body)
 {
     QString node_pubkey = resource.mid(11);
     qWarning() <<"node_info/"<< node_pubkey;
@@ -87,7 +87,7 @@ web::http::status_code GET_nodeinfo(const QString& resource, json::value& body, 
     return status_codes::OK;
 }
 
-web::http::status_code GET_nodeadvice(const QString& resource, json::value& body, QString& error_string)
+web::http::status_code GET_nodeadvice(const QString& resource, json::value& body)
 {
     QStringList args = resource.mid(13).split("/");
     QString node_pubkey = args[0];
@@ -176,8 +176,7 @@ void handle_get(http_request request)
    }
    else if(resource.startsWith("/node_info/"))
       {
-         QString error_string;
-         auto status = GET_nodeinfo(resource, body, error_string);
+         auto status = GET_nodeinfo(resource, body);
          if(status != status_codes::OK)
          {
            request.reply(status);
@@ -186,8 +185,7 @@ void handle_get(http_request request)
       }
    else if(resource.startsWith("/node_advice/"))
       {
-         QString error_string;
-         auto status = GET_nodeadvice(resource, body, error_string);
+         auto status = GET_nodeadvice(resource, body);
          if(status != status_codes::OK)
          {
            request.reply(status);
@@ -341,7 +339,18 @@ void handle_del(http_request request)
 
 void RestThread::run()
 {
-    http_listener listener("http://192.168.1.54:4343");
+    http_listener_config config;
+
+    config.set_ssl_context_callback([](boost::asio::ssl::context &context){
+       /* boost::system::error_code ec;
+      context.use_certificate_file("/tmp/example.crt",boost::asio::ssl::context_base::pem, ec);
+      qWarning() <<ec.message().c_str();*/
+
+        context.use_certificate_chain_file("/tmp/example.crt");
+        context.use_private_key_file("/tmp/example.key", boost::asio::ssl::context::pem);
+
+});
+    http_listener listener("https://192.168.1.54:4343", config);
 
     listener.support(methods::GET,  handle_get);
     listener.support(methods::POST, handle_post);

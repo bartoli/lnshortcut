@@ -13,7 +13,7 @@ class Hopness;
 typedef struct
 {
   int node2, node3;
-  long cap2, cap3;
+  uint64_t cap2, cap3;
 
 } Result;
 
@@ -30,7 +30,6 @@ public:
 
 public slots:
     void newWork(const QString&);
-    void fetchNodeInfo(const QString& pubkey, int workId);    
 
 private:
     AnalysisThread();
