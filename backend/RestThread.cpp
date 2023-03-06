@@ -1,4 +1,46 @@
 #include <RestThread.hpp>
+
+
+#include "cpprest/json.h"
+#include "cpprest/http_listener.h"
+#include "cpprest/uri.h"
+#include "cpprest/asyncrt_utils.h"
+#include "cpprest/json.h"
+#include "cpprest/filestream.h"
+#include "cpprest/containerstream.h"
+#include "cpprest/producerconsumerstream.h"
+
+using namespace std;
+using namespace web;
+using namespace http;
+using namespace utility;
+using namespace http::experimental::listener;
+
+QScopedPointer<Logger> RestThread::logger;
+
+class handler
+{
+    public:
+        handler();
+        handler(utility::string_t url);
+        virtual ~handler();
+
+        pplx::task<void>open(){return m_listener.open();}
+        pplx::task<void>close(){return m_listener.close();}
+
+    protected:
+
+    private:
+        void handle_get(http_request message);
+        void handle_put(http_request message);
+        void handle_post(http_request message);
+        void handle_delete(http_request message);
+        void handle_error(pplx::task<void>& t);
+        http_listener m_listener;
+};
+
+
+
 #include <cpprest/http_listener.h>
 #include <cpprest/json.h>
 
@@ -100,7 +142,12 @@ web::http::status_code GET_nodeadvice(const QString& resource, json::value& body
         body["error"] = json::value("Network graph informaton not available, please retry later.");
         return status_codes::OK;
     }
-    int node_rank = network->node_index[node_pubkey];
+    int node_rank = network->node_index.value(node_pubkey,-1);
+    if(node_rank < 0)
+    {
+        body["error"] = json::value("Unknown node public key");
+        return status_codes::OK;
+    }
     //Is it a lns peer? Is capacity not more than capacity connected to lns?
     {
         int lns_capacity = 0;
@@ -151,6 +198,11 @@ void handle_get(http_request request)
    cout <<"a"<<request.relative_uri().resource().to_string() <<endl;*/
 
    const QString resource(request.relative_uri().resource().to_string().c_str());
+   RestThread::logger->log(QString("GET url=%1 thread=%2 source=%3")
+                           .arg(resource)
+                           .arg((intptr_t)QThread::currentThreadId())
+                           .arg("").toUtf8());
+
    http_response answer = http_response(status_codes::OK);
    //Allow requests from a different IP address
    answer.headers().add("Access-Control-Allow-Origin", "*");
@@ -194,7 +246,6 @@ void handle_get(http_request request)
       }
    else if(resource.startsWith("/https_test"))
       {
-         auto status = status_codes::OK;
          body["passed"]=true;
       }
    /*
@@ -340,6 +391,11 @@ void handle_del(http_request request)
       for (auto const & key : keys)
          dictionary.erase(key);
    });
+}
+
+RestThread::RestThread()
+{
+    logger.reset(new Logger("/tmp/ln4me.log"));
 }
 
 void RestThread::run()

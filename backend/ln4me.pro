@@ -10,6 +10,7 @@ SOURCES = main.cpp \
     GuiThread.cpp \
     Hopness.cpp \
     LndThread.cpp \
+    Logger.cpp \
     MainWindow.cpp \
     NetworkSummary.cpp \
     Options.cpp \
@@ -26,6 +27,7 @@ HEADERS += \
     GuiThread.hpp \
     Hopness.hpp \
     LndThread.hpp \
+    Logger.hpp \
     MainWindow.hpp \
     NetworkSummary.hpp \
     Options.hpp \
