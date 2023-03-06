@@ -26,7 +26,7 @@ public:
     void registerLauncher(WorkLauncher*);
 
     //analyse nodes found for each hop number
-    static void analyseHops(const NetworkSummary&, const QString& node0, int min_capacity, Result&);
+    static void analyseHops(const NetworkSummary&, const int& node0_rank, int min_capacity, Result&);
 
 public slots:
     void newWork(const QString&);

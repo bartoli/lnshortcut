@@ -5,6 +5,7 @@ z######################################################################
 QT = core gui widgets network
 TEMPLATE = app
 SOURCES = main.cpp \
+    Analyse_capacityPerHop.cpp \
     AnalysisThread.cpp \
     Config.cpp \
     GuiThread.cpp \
@@ -21,6 +22,7 @@ SOURCES = main.cpp \
 # Directories
 
 HEADERS += \
+    Analyse_capacityPerHop.hpp \
     AnalysisThread.hpp \
     Config.hpp \
     EdgeDirection.hpp \

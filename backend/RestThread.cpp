@@ -178,7 +178,7 @@ web::http::status_code GET_nodeadvice(const QString& resource, json::value& body
 
 
     Result result;
-    AnalysisThread::analyseHops(*network, node_pubkey, cap, result);
+    AnalysisThread::analyseHops(*network, node_rank, cap, result);
 
     body["node0"] = json::value(node_pubkey.toUtf8().constData());
     body["node2"] = json::value(network->nodes[result.node2].pubKey.toUtf8().constData());
