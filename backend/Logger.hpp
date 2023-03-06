@@ -15,6 +15,7 @@ class Logger
 {
 public:
     Logger(const QString& logPath);
+    ~Logger();
     void log(const QByteArray& message);
 private:
     QFile _file;
