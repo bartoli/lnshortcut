@@ -132,8 +132,18 @@ web::http::status_code GET_nodeinfo(const QString& resource, json::value& body)
 web::http::status_code GET_nodeadvice(const QString& resource, json::value& body)
 {
     QStringList args = resource.mid(13).split("/");
+    if(args.size()<2)
+    {
+        body["error"] = json::value("2 arguments needed.");
+        return status_codes::OK;
+    }
     QString node_pubkey = args[0];
     int cap = atoi(args[1].toUtf8().constData());
+    if(cap<=0)
+        {
+            body["error"] = json::value("Capacity should be a positive number of satoshi.");
+            return status_codes::OK;
+        }
 
     //Is there a prefetched network graph yet?
     NetworkSummary* network = PrefetcherThread::getInstance()->_currentNetwork;
@@ -161,11 +171,11 @@ web::http::status_code GET_nodeadvice(const QString& resource, json::value& body
             if(other_node_rank == network->lns_noderank)
                 lns_capacity += edge.capacity;
         }
-        if(node_rank != network->lns_noderank && lns_capacity<cap)
+        /*if(node_rank != network->lns_noderank && lns_capacity<cap)
         {
             body["error"] = json::value("Can't advise for channels with more capacity than the sum of the channels connected to LNSHortcut");
             return status_codes::OK;
-        }
+        }*/
         // Adjust analysed capacity to max existing capacity.
         // It makes no sense to analyse for more than the curent bigger channel,
         // since we need at least 2 channels at that capacity to actually route that size
