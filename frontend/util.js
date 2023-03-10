@@ -5,7 +5,7 @@ function getRestJson(path, applyFunc)
 {
   var result;
   try {
-    url = 'https://79.87.88.235:4343/' + path;
+    url = 'https://advisor.lnshortcut.ovh/' + path;
     console.log('1', url);
     fetch(url)
     .then((response) => response.json())

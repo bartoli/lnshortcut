@@ -14,13 +14,13 @@ We try to link to the 'furthest' nodes on the Lightning Network, making everyone
 <br>
 <div id="nodeAnalysisForm">
     <form>
-      Node pubkey<input type="text" id="pubkey"><input type="button" value="Get node statistics" onclick="node_stats()">
+      Node pubkey<input type="text" value="02c521e5e73e40bad13fb589635755f674d6a159fd9f7b248d286e38c3a46f8683" id="pubkey" required="required" title = "Public key of your Lightning node"><input type="button" value="Get node statistics" onclick="node_stats()">
     </form>
 </div>
 <div id="analysisResult"></div>
 <div id="nodeAdviceForm">
     <form>
-      Capacity<input type="text" id="capacity" title="Capacity to open. Anaysis will only consider channels of this size to suggeset nodes that are poorly connected with this capacity">
+      Capacity<input type="number" min=1 minlength=66 maxlength=66 value=1000000 id="capacity" required="required" title="Capacity to open, in satoshis. The anaysis will only consider channels of this size to suggest nodes that are poorly connected with this capacity">
       <input type="button" value="Get channel advice" onclick="node_advice()">
     </form>
 </div>

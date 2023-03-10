@@ -206,12 +206,13 @@ void handle_get(http_request request)
    /*cout <<"c"<<request.relative_uri().path()<<endl;
    cout <<"b"<<request.relative_uri().query()<<endl;
    cout <<"a"<<request.relative_uri().resource().to_string() <<endl;*/
+   const QString origin=request.remote_address().c_str();
 
    const QString resource(request.relative_uri().resource().to_string().c_str());
    RestThread::logger->log(QString("GET url=%1 thread=%2 source=%3")
                            .arg(resource)
                            .arg((intptr_t)QThread::currentThreadId())
-                           .arg("").toUtf8());
+                           .arg(origin).toUtf8());
 
    http_response answer = http_response(status_codes::OK);
    //Allow requests from a different IP address
@@ -412,16 +413,13 @@ void RestThread::run()
 {
     http_listener_config config;
 
-    config.set_ssl_context_callback([](boost::asio::ssl::context &context){
-       /* boost::system::error_code ec;
-      context.use_certificate_file("/tmp/example.crt",boost::asio::ssl::context_base::pem, ec);
-      qWarning() <<ec.message().c_str();*/
+    /*config.set_ssl_context_callback([](boost::asio::ssl::context &context){
 
         context.use_certificate_chain_file("/tmp/example.crt");
         context.use_private_key_file("/tmp/example.key", boost::asio::ssl::context::pem);
 
-});
-    http_listener listener("https://192.168.1.54:4343", config);
+});*/
+    http_listener listener("http://192.168.1.54:4343"/*, config*/);
 
     listener.support(methods::GET,  handle_get);
     listener.support(methods::POST, handle_post);
