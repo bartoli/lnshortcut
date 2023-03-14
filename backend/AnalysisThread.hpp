@@ -9,6 +9,7 @@ class WorkLauncher;
 
 class NetworkSummary;
 class Hopness;
+class Config;
 
 typedef struct
 {
@@ -26,7 +27,7 @@ public:
     void registerLauncher(WorkLauncher*);
 
     //analyse nodes found for each hop number
-    static void analyseHops(const NetworkSummary&, const int& node0_rank, int min_capacity, Result&);
+    static void analyseHops(const NetworkSummary&, const int& node0_rank, const Config& config, Result&);
 
 public slots:
     void newWork(const QString&);

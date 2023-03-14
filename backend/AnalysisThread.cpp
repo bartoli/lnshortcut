@@ -25,7 +25,7 @@ AnalysisThread::AnalysisThread()
 
 
 //analyse nodes found for each hop number
-void AnalysisThread::analyseHops(const NetworkSummary& networkRef, const int& node0_rank, int min_capacity, Result& result)
+void AnalysisThread::analyseHops(const NetworkSummary& networkRef, const int& node0_rank, const Config& config, Result& result)
 {
     //Compare 2 results of capacity at each hop leve
     //Returns capacity that is nearer relative to ref
@@ -50,7 +50,7 @@ void AnalysisThread::analyseHops(const NetworkSummary& networkRef, const int& no
 
 
     //Base capacity for each hop
-    capacity_per_hop(base_reach_tree, networkRef, base_result, node0_rank, min_capacity);
+    capacity_per_hop(base_reach_tree, networkRef, base_result, node0_rank, config);
 
     //For each node, count the capacity it can reach in the 'further' direction
     //capacity reachable by
@@ -121,13 +121,13 @@ void AnalysisThread::analyseHops(const NetworkSummary& networkRef, const int& no
          return cap;
     };*/
 
-    Config* config = Config::getInstance();
+    //Config* config = Config::getInstance();
     QMultiMap<qint64,int> reachable_capacity;
     ReachTree refTree;
     Hopness refResult;
-    capacity_per_hop(refTree, networkRef, refResult, node0_rank, min_capacity);
+    capacity_per_hop(refTree, networkRef, refResult, node0_rank, config);
 
-    auto compare_candidates = [&config, &min_capacity, &compare_results, &refResult, &node0_rank]
+    auto compare_candidates = [&config, &compare_results, &refResult, &node0_rank]
             (const std::vector<int>& cand,const NetworkSummary& net_ref, uint64_t& best_nearer_cap, int& best_candidate)
     {
         qWarning() << QString("Analysing %1 candidates").arg(cand.size());
@@ -148,17 +148,24 @@ void AnalysisThread::analyseHops(const NetworkSummary& networkRef, const int& no
         {
             int node_rank = cand[i];
             const Node& cand_node = net_ref.nodes[node_rank];
-            if(net_ref.nodes[node_rank].clearnet && cand_node.minChanSize<=min_capacity&& !config->ignored_endpoint_nodes.contains(cand_node.pubKey))
+
+            if(!net_ref.nodes[node_rank].clearnet)
+                continue;
+            if(cand_node.minChanSize>config.minCap)
+                continue;
+            if(config.ignored_endpoint_nodes.contains(cand_node.pubKey))
+                continue;
+            if(config.zbfEndpoints && !cand_node.isZbf)
+                continue;
+
+            ReachTree tmp_reach_tree;
+            Hopness tmp_result;
+            capacity_per_hop(tmp_reach_tree, net_ref, tmp_result, node0_rank, config, std::vector<int>(1, node_rank));
+            uint64_t nearer_cap = compare_results(refResult.capacities, tmp_result.capacities);
+            if(nearer_cap > best_nearer_cap)
             {
-              ReachTree tmp_reach_tree;
-              Hopness tmp_result;
-              capacity_per_hop(tmp_reach_tree, net_ref, tmp_result, node0_rank, min_capacity, std::vector<int>(1, node_rank));
-              uint64_t nearer_cap = compare_results(refResult.capacities, tmp_result.capacities);
-              if(nearer_cap > best_nearer_cap)
-              {
-                  best_nearer_cap = nearer_cap;
-                  best_candidate = node_rank;
-              }
+                best_nearer_cap = nearer_cap;
+                best_candidate = node_rank;
             }
         }
         qWarning() << QString("Best candidate %1 brings %2 BTC nearer")
@@ -167,8 +174,8 @@ void AnalysisThread::analyseHops(const NetworkSummary& networkRef, const int& no
     };
 
 
-    std::thread t2([&](){compare_candidates(base_reach_tree[config->candidates_depth], networkRef, result.cap2, result.node2);});
-    std::thread t3([&](){compare_candidates(base_reach_tree[config->candidates_depth+1], networkRef, result.cap3, result.node3);});
+    std::thread t2([&](){compare_candidates(base_reach_tree[config.candidates_depth], networkRef, result.cap2, result.node2);});
+    std::thread t3([&](){compare_candidates(base_reach_tree[config.candidates_depth+1], networkRef, result.cap3, result.node3);});
       //Do full hops analyse for each candidate
 /*
       compare_candidates(base_reach_tree[config->candidates_depth+1], networkRef, result.cap3, result.node3);*/
@@ -206,7 +213,10 @@ void AnalysisThread::newWork(const QString& node0)
   int node0_rank = network->node_index.value(node0,-1);
   if(node0_rank<0)
       return;
-  analyseHops(*network, node0_rank, 2500000, result);
+
+  Config config;
+  config.minCap = 2500000,
+  analyseHops(*network, node0_rank, config, result);
 }
 
 AnalysisThread* AnalysisThread::getInstance()

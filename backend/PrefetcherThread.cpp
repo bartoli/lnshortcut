@@ -28,7 +28,7 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
   QScopedPointer<NetworkSummary> network(new NetworkSummary());
   network->block_height = block_height;
 
-  Config* config = Config::getInstance();
+  Config config;
 
   QJsonDocument d = QJsonDocument::fromJson(graphJson);
 
@@ -50,7 +50,7 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
       if(last_update<=0/*now-(3600*100)*/|| node_addresses.isEmpty()/* || node_features.isEmpty()*/)
       {
         //Nodes we know exist but could not reach? (only when tor is disabled?)
-        config->ignored_routing_nodes.insert(pubkey);
+        config.ignored_routing_nodes.insert(pubkey);
         continue;
       }
 
@@ -102,7 +102,7 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
       QString pubkey1 = edge_object.value("node1_pub").toString();
       QString pubkey2 = edge_object.value("node2_pub").toString();
 
-      if(config->ignored_routing_nodes.contains(pubkey1) || config->ignored_routing_nodes.contains(pubkey2))
+      if(config.ignored_routing_nodes.contains(pubkey1) || config.ignored_routing_nodes.contains(pubkey2))
       {
         continue;
       }
@@ -165,7 +165,7 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
                .arg(network->edges.size())
                .arg(network->total_capacity/100000000.0));
 
-  network->lns_noderank = network->node_index.value(config->lns_pubkey, -1);
+  network->lns_noderank = network->node_index.value(config.lns_pubkey, -1);
 
   for (const Node& node : network->nodes)
   {

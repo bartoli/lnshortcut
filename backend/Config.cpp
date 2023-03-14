@@ -1,18 +1,6 @@
 #include "Config.hpp"
 
-QScopedPointer<Config> Config::_instance;
-
-Config* Config::getInstance()
-{
-    if(_instance.isNull())
-    {
-        _instance.reset(new Config());
-        _instance->_initConfig();
-    }
-    return _instance.data();
-}
-
-void Config::_initConfig()
+Config::Config()
 {
 
     ignored_endpoint_nodes = QSet<QString>(
@@ -47,10 +35,6 @@ void Config::_initConfig()
     //0-based hop count for list of candidates
     candidates_depth = 1;
 
-    //ZeroBaseFee options
-    //Connect only to nodes that respect zbf
-    bool zbfEndpoints = false;
-    //Analyze ony zbf paths
-    bool zbfPaths = false;
+
 
 }

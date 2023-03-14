@@ -13,7 +13,8 @@
 class Config
 {
 public:
-    static Config* getInstance();
+    Config();
+    //static Config* getInstance();
 
     //Analysis config params.
     //TO BE MOVED TO A SEPARATE OBJECT
@@ -29,10 +30,12 @@ public:
     //Hop level for candidates;
     int candidates_depth;
 
-private:
-    static QScopedPointer<Config> _instance;
-    void _initConfig();
-
+    qint64 minCap;
+    //ZeroBaseFee options
+    //Connect only to nodes that respect zbf
+    bool zbfEndpoints = true;
+    //Analyze ony zbf paths
+    bool zbfPaths = true;
 
 };
 

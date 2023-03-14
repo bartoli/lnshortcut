@@ -1,11 +1,12 @@
 
 #include <Analyse_capacityPerHop.hpp>
+#include <Config.hpp>
 #include <Hopness.hpp>
 #include <NetworkSummary.hpp>
 
 //Compute, for each level of hops, the reached capacity
 //testEdges: node ranks to add simulated edge to
-void capacity_per_hop(ReachTree& reach_tree, const NetworkSummary& networkRef, Hopness& result, int node0_rank, int64_t min_cap, std::vector<int> testEdges)
+void capacity_per_hop(ReachTree& reach_tree, const NetworkSummary& networkRef, Hopness& result, int node0_rank, const Config& config, std::vector<int> testEdges)
 {
     //list of reached node ranks for each level of hops from origin
     //std::vector<std::vector<qint32>> reach_tree(20);
@@ -24,8 +25,9 @@ void capacity_per_hop(ReachTree& reach_tree, const NetworkSummary& networkRef, H
           Edge e;
           e.node1 = node0_rank;
           e.node2 = testEdges[i];
-          e.capacity = min_cap;
+          e.capacity = config.minCap;
           e.capacity_counted = -1;
+          e.isZbf = true;
           netCpy.edges.push_back(e);
           int edge_rank = netCpy.edges.size()-1;
           netCpy.nodes[node0_rank].edges.push_back(edge_rank);
@@ -84,7 +86,9 @@ void capacity_per_hop(ReachTree& reach_tree, const NetworkSummary& networkRef, H
           const Edge& edge = _network->edges[edge_rank];
           //if(nodeObj.pubKey == "02029a5ea890afa1aa8a201ae66fabaaaa50bc5735bbc88239d9f05d241a328c99")
           //    printf("%d\n", edge.capacity);
-          if(edge.capacity<min_cap)
+          if(edge.capacity<config.minCap)
+              continue;
+          if(config.zbfPaths && !edge.isZbf)
               continue;
           int other_node_rank = edge.node1==node? edge.node2 : edge.node1;
 

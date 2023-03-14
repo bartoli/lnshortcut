@@ -59,6 +59,7 @@ using namespace web::http::experimental::listener;
 #include <string>
 #include <AnalysisThread.hpp>
 #include <Hopness.hpp>
+#include <Config.hpp>
 using namespace std;
 
 #define TRACE(msg)            cout << msg
@@ -188,7 +189,9 @@ web::http::status_code GET_nodeadvice(const QString& resource, json::value& body
 
 
     Result result;
-    AnalysisThread::analyseHops(*network, node_rank, cap, result);
+    Config config;
+    config.minCap = cap;
+    AnalysisThread::analyseHops(*network, node_rank, config, result);
 
     body["node0"] = json::value(node_pubkey.toUtf8().constData());
     body["node2"] = json::value(network->nodes[result.node2].pubKey.toUtf8().constData());
@@ -206,8 +209,9 @@ void handle_get(http_request request)
    /*cout <<"c"<<request.relative_uri().path()<<endl;
    cout <<"b"<<request.relative_uri().query()<<endl;
    cout <<"a"<<request.relative_uri().resource().to_string() <<endl;*/
-   const QString origin=request.remote_address().c_str();
-
+   QString origin=request.remote_address().c_str();
+   http_headers& headers = request.headers();
+   origin = headers["X-Forwarded-For"].c_str();
    const QString resource(request.relative_uri().resource().to_string().c_str());
    RestThread::logger->log(QString("GET url=%1 thread=%2 source=%3")
                            .arg(resource)
