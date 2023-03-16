@@ -132,6 +132,8 @@ web::http::status_code GET_nodeinfo(const QString& resource, json::value& body)
 
 web::http::status_code GET_nodeadvice(const QString& resource, json::value& body)
 {
+    Config config;
+
     QStringList args = resource.mid(13).split("/");
     if(args.size()<2)
     {
@@ -145,6 +147,12 @@ web::http::status_code GET_nodeadvice(const QString& resource, json::value& body
             body["error"] = json::value("Capacity should be a positive number of satoshi.");
             return status_codes::OK;
         }
+    config.minCap = cap;
+
+    if(args.size()>=3)
+        config.zbfPaths = args[2] == "true";
+    if(args.size()>=4)
+        config.zbfEndpoints = args[3] == "true";
 
     //Is there a prefetched network graph yet?
     NetworkSummary* network = PrefetcherThread::getInstance()->_currentNetwork;
@@ -189,8 +197,7 @@ web::http::status_code GET_nodeadvice(const QString& resource, json::value& body
 
 
     Result result;
-    Config config;
-    config.minCap = cap;
+
     AnalysisThread::analyseHops(*network, node_rank, config, result);
 
     body["node0"] = json::value(node_pubkey.toUtf8().constData());

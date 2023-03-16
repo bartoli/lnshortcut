@@ -90,5 +90,10 @@ function node_advice()
   }
   var pubkey = document.getElementById('pubkey').value;
   var capacity = document.getElementById('capacity').value;
-  getRestJson("node_advice/"+pubkey+"/"+capacity, _apply); 
+  var query = "node_advice/"+pubkey+"/"+capacity;
+  var zbfEdges = document.getElementById("zbfEdges").checked;
+  query += "/"+zbfEdges;
+  var zbfNodes = document.getElementById("zbfNodes").checked;
+  query += "/"+zbfNodes;
+  getRestJson(query, _apply); 
 }
