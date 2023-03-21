@@ -17,6 +17,7 @@ SOURCES = main.cpp \
     Options.cpp \
     PrefetcherThread.cpp \
     RestThread.cpp \
+    ResultPool.cpp \
     WorkLauncher.cpp
 
 # Directories
@@ -35,6 +36,7 @@ HEADERS += \
     Options.hpp \
     PrefetcherThread.hpp \
     RestThread.hpp \
+    ResultPool.hpp \
     WorkLauncher.hpp
 
 #link for cpprest

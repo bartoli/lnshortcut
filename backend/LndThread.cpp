@@ -1,8 +1,10 @@
 #include <LndThread.hpp>
+#include <RestThread.hpp>
 #include <QProcess>
 #include <QDebug>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <ResultPool.hpp>
 
 int LndThread::_currentHeight = 0;
 
@@ -10,12 +12,23 @@ void LndThread::run()
 {
     connect(this, &LndThread::_getinfo_newresult, &LndThread::_getinfo_fetchresult);
     connect(this, &LndThread::_newBlockHeight, this, &LndThread::_describeGraph);
+    //connect(&RestThread::needDonateInvoice, this, &LndThread::_generateDonateInvoice);
+
+    ResultPool* result_pool = ResultPool::getInstance();
 
     // main loop, just to detect new block heights
     // the rest is done through signals
     while(1)
     {
-        sleep(_getinfo_period_sec);
+        uint64_t work_id, amt_sat;
+        if(result_pool->hasInvoiceRequest(work_id, amt_sat))
+        {
+            QString invoice;
+            _generateDonateInvoice(work_id, amt_sat, invoice);
+            result_pool->addInvoice(work_id, invoice);
+        }
+
+        sleep(1);
 
         if(!_configOK())
             continue;
@@ -34,6 +47,23 @@ void LndThread::_getInfo()
     }
 }
 
+
+void LndThread::_generateDonateInvoice(uint64_t workId, uint64_t amt_sats, QString& invoice)
+{
+    //static variable, to be able to emit the output only by reference (and used the latest output in case some signals were slow to be handled?)
+    //beware to not use the output anymore while the new one is being written in place!
+    static QByteArray output_json;
+    if( _runLnCli({"addinvoice",
+                  "--memo", "\"LNShortcut donation\"",
+                  "--amt", QString::number(amt_sats),
+                  "--expiry", "120"}, output_json))
+    {
+
+      QJsonDocument responseDoc = QJsonDocument::fromJson(output_json);
+      QJsonObject responseObj = responseDoc.object();
+      invoice = responseObj.value("payment_request").toString();
+    }
+}
 
 void LndThread::_describeGraph(int height)
 {

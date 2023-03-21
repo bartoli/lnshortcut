@@ -21,16 +21,17 @@ signals:
     void newGraphJson(int height, const QByteArray&);
     void _getinfo_newresult(const QByteArray&);
     void _newBlockHeight(const int);
-
+    //void newDonateInvoice(uint64_t workId, const QString& invoice_string);
 
 private slots:
     void _getinfo_fetchresult(const QByteArray&);
     void _fetchNewBlock(const int);
 
 private:
-    //wrappers for lncli acctions
+    //wrappers for lncli actions
     void _describeGraph(int height);
     void _getInfo();
+    void _generateDonateInvoice(uint64_t workId, uint64_t amt_sats, QString& invoice);
 
     bool _configOK();
     bool _runLnCli(const QStringList& options, QByteArray& output);

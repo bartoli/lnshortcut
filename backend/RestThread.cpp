@@ -5,7 +5,6 @@
 #include "cpprest/http_listener.h"
 #include "cpprest/uri.h"
 #include "cpprest/asyncrt_utils.h"
-#include "cpprest/json.h"
 #include "cpprest/filestream.h"
 #include "cpprest/containerstream.h"
 #include "cpprest/producerconsumerstream.h"
@@ -60,6 +59,7 @@ using namespace web::http::experimental::listener;
 #include <AnalysisThread.hpp>
 #include <Hopness.hpp>
 #include <Config.hpp>
+#include <ResultPool.hpp>
 using namespace std;
 
 #define TRACE(msg)            cout << msg
@@ -71,10 +71,10 @@ void display_json(
    json::value const & jvalue,
    utility::string_t const & prefix)
 {
-   cout << prefix << jvalue.serialize() << endl;
+   qWarning() << prefix.c_str() << jvalue.serialize().c_str() << endl;
 }
 
-web::http::status_code GET_nodeinfo(const QString& resource, json::value& body)
+void GET_nodeinfo(const QString& resource, json::value& body)
 {
     QString node_pubkey = resource.mid(11);
     qWarning() <<"node_info/"<< node_pubkey;
@@ -82,7 +82,7 @@ web::http::status_code GET_nodeinfo(const QString& resource, json::value& body)
     if (network == nullptr)
     {
         body["error"] = json::value("Network graph informaton not available, please retry later.");
-        return status_codes::OK;
+        return;
     }
 
     int o_n_edges=0;
@@ -92,7 +92,7 @@ web::http::status_code GET_nodeinfo(const QString& resource, json::value& body)
     if(node_rank<0)
     {
         body["error"] = json::value(QString("Unknown node public key %1.").arg(node_pubkey).toUtf8().constData());
-        return status_codes::OK;
+        return;
     }
     bool lns_peer = node_rank==network->lns_noderank;
 
@@ -127,10 +127,10 @@ web::http::status_code GET_nodeinfo(const QString& resource, json::value& body)
     body["cap_total"] = o_cap_ttl;
     body["lns_peer"] = lns_peer;
 
-    return status_codes::OK;
+    return;
 }
 
-web::http::status_code GET_nodeadvice(const QString& resource, json::value& body)
+void GET_nodeadvice(const QString& resource, json::value& body)
 {
     Config config;
 
@@ -138,14 +138,14 @@ web::http::status_code GET_nodeadvice(const QString& resource, json::value& body
     if(args.size()<2)
     {
         body["error"] = json::value("2 arguments needed.");
-        return status_codes::OK;
+        return;
     }
     QString node_pubkey = args[0];
     int cap = atoi(args[1].toUtf8().constData());
     if(cap<=0)
         {
             body["error"] = json::value("Capacity should be a positive number of satoshi.");
-            return status_codes::OK;
+            return;
         }
     config.minCap = cap;
 
@@ -159,13 +159,13 @@ web::http::status_code GET_nodeadvice(const QString& resource, json::value& body
     if (network == nullptr)
     {
         body["error"] = json::value("Network graph informaton not available, please retry later.");
-        return status_codes::OK;
+        return;
     }
     int node_rank = network->node_index.value(node_pubkey,-1);
     if(node_rank < 0)
     {
         body["error"] = json::value("Unknown node public key");
-        return status_codes::OK;
+        return;
     }
     //Is it a lns peer? Is capacity not more than capacity connected to lns?
     {
@@ -207,7 +207,27 @@ web::http::status_code GET_nodeadvice(const QString& resource, json::value& body
     body["cap2"] = result.cap2;
     body["cap3"] = result.cap3;
 
-    return status_codes::OK;
+    return;
+}
+
+void RestThread::GET_donateInvoice(const QString& resource, json::value& body)
+{
+    QStringList args = resource.mid(16).split('/');
+    if(args.isEmpty())
+    {
+        body["error"] = json::value("Missing ammount argument");
+    }
+    long long amt_sat = atoll(args[0].toUtf8().constData());
+    if(amt_sat<=0)
+    {
+        body["error"] = json::value("Need positive donation ammount");
+        return;
+    }
+
+    ResultPool::getInstance()->donateInvoiceRequest((intptr_t)QThread::currentThreadId(), amt_sat);
+    QString result;
+    ResultPool::getInstance()->waitForResult_invoice((intptr_t)QThread::currentThreadId(), result, 10, true);
+    body["invoice"] = json::value(result.toLocal8Bit().constData());
 }
 
 void handle_get(http_request request)
@@ -250,25 +270,22 @@ void handle_get(http_request request)
    }
    else if(resource.startsWith("/node_info/"))
       {
-         auto status = GET_nodeinfo(resource, body);
-         if(status != status_codes::OK)
-         {
-           request.reply(status);
-           return;
-         }
+         GET_nodeinfo(resource, body);
+         //request.reply(status_codes::OK);
       }
    else if(resource.startsWith("/node_advice/"))
       {
-         auto status = GET_nodeadvice(resource, body);
-         if(status != status_codes::OK)
-         {
-           request.reply(status);
-           return;
-         }
+         GET_nodeadvice(resource, body);
+         //request.reply(status_codes::OK);
       }
    else if(resource.startsWith("/https_test"))
       {
          body["passed"]=true;
+      }
+   else if(resource.startsWith("/donate_invoice/"))
+      {
+       RestThread::GET_donateInvoice(resource, body);
+       //request.reply(status_codes::OK);
       }
    /*
     * TODO:
@@ -281,6 +298,8 @@ void handle_get(http_request request)
        request.reply(status_codes::NotFound);
        return;
    }
+   //body["test" ] = 1;
+   //display_json(body, "S: ");
    answer.set_body(body);
    request.reply(answer);
 }
