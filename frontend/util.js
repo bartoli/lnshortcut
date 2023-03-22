@@ -97,3 +97,15 @@ function node_advice()
   query += "/"+zbfNodes;
   getRestJson(query, _apply); 
 }
+
+function get_donate_invoice()
+{
+  function _apply(json)
+  {
+    const div = document.getElementById('donateInvoiceDiv');
+    div.innerHTML = "Invoice (2H validity): "+ json.invoice;
+  }
+  var amt_sats = document.getElementById('donate_amt').value;
+  var query = "donate_invoice/"+amt_sats;
+  getRestJson(query, _apply); 
+}
