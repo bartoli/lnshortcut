@@ -17,16 +17,27 @@ Config::Config()
         "021607cfce19a4c5e7e6e738663dfafbbbac262e4ff76c2c9b30dbeefc35c00643",
 
         //Future interesting channels, but thhat require to big chan sise
+        //SunnySarah, min=0.04
+        "03423790614f023e3c0cdaa654a3578e919947e4c3a14bf5044e7c787ebd11af1a",
+        //Garlic, min = 0.04
+        "033b63e4a9931dc151037acbce12f4f8968c86f5655cf102bbfa85a26bd4adc6d9",
         //bfx-lnd0 min = 0.04BTC
         "033d8656219478701227199cbd6f670335c8d408a92ae88b962c49d4dc0e83e025",
         //bfx-lnd1, idem
         "03cde60a6323f7122d5178255766e38114b4722ede08f7c9e0c5df9b912cc201d6",
         //WalletofSatoshi, 0.05BTC
         "035e4ff418fc8b5554c5d9eea66396c227bd429a3251c8cbc711002ba215bfc226",
+        //Nordicrails, min= 0.05
+        "033d9e73a183c9714545f292875fb90c4372bddc9c2cc302b265d15e7969a5ed60",
+        //LnCapital, min=0.06
+        "0326e692c455dd554c709bbb470b0ca7e0bb04152f777d1445fd0bf3709a2833a3",
         //Breez, 10M
         "031015a7839468a3c266d662d5bb21ea4cea24226936e2864a7ca4f2c3939836e0",
         //River Financial 1 : min=0.1BTC
-        "03037dc08e9ac63b82581f79b662a4d0ceca8a8ca162b1af3551595b8f2d97b70a"
+        "03037dc08e9ac63b82581f79b662a4d0ceca8a8ca162b1af3551595b8f2d97b70a",
+        //cyberhub, min=0.1
+        "03dc686001f9b1ff700dfb8917df70268e1919433a535e1fb0767c19223509ab57",
+
 
     });
 

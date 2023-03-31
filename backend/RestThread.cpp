@@ -71,7 +71,7 @@ void display_json(
    json::value const & jvalue,
    utility::string_t const & prefix)
 {
-   qWarning() << prefix.c_str() << jvalue.serialize().c_str() << endl;
+   qWarning() << prefix.c_str() << jvalue.serialize().c_str() << Qt::endl;
 }
 
 void GET_nodeinfo(const QString& resource, json::value& body)
@@ -102,7 +102,7 @@ void GET_nodeinfo(const QString& resource, json::value& body)
     for(int edge_rank : node.edges)
     {
         const Edge& edge = network->edges[edge_rank];
-        int other_node_rank = edge.node1==node_rank? edge.node2 : edge.node1;
+        int other_node_rank = edge.side[0].node_rank==node_rank? edge.side[1].node_rank : edge.side[0].node_rank;
         peer_ranks.insert(other_node_rank);
         uint64_t edge_cap = edge.capacity;
         o_cap_min =std::min(o_cap_min, edge_cap);
@@ -175,7 +175,7 @@ void GET_nodeadvice(const QString& resource, json::value& body)
         for(const int edge_rank : node.edges)
         {
             const Edge& edge = network->edges[edge_rank];
-            int other_node_rank = edge.node1 == node_rank? edge.node2 : edge.node1;
+            int other_node_rank = edge.side[0].node_rank == node_rank? edge.side[1].node_rank : edge.side[0].node_rank;
             max_cap = std::max(max_cap, edge.capacity);
             if(other_node_rank == network->lns_noderank)
                 lns_capacity += edge.capacity;

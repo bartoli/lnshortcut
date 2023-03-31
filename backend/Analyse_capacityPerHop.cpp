@@ -23,8 +23,8 @@ void capacity_per_hop(ReachTree& reach_tree, const NetworkSummary& networkRef, H
         {
           //     qWarning()<<QString::number(testEdges[i]);
           Edge e;
-          e.node1 = node0_rank;
-          e.node2 = testEdges[i];
+          e.side[0].node_rank = node0_rank;
+          e.side[1].node_rank = testEdges[i];
           e.capacity = config.minCap;
           e.capacity_counted = -1;
           e.isZbf = true;
@@ -90,7 +90,7 @@ void capacity_per_hop(ReachTree& reach_tree, const NetworkSummary& networkRef, H
               continue;
           if(config.zbfPaths && !edge.isZbf)
               continue;
-          int other_node_rank = edge.node1==node? edge.node2 : edge.node1;
+          int other_node_rank = edge.side[0].node_rank==node? edge.side[1].node_rank : edge.side[0].node_rank;
 
           //const Node& other_node = network.nodes[other_node_rank];
           if(result.edge_capacity_counted[edge_rank] <0)
@@ -186,3 +186,34 @@ void capacity_per_hop(ReachTree& reach_tree, const NetworkSummary& networkRef, H
     }
     //qWarning()<<QString("Reached %1 nodes (max %2 hops)").arg(total_reached_nodes).arg(search_depth);
 };//capacity_for_hops()
+
+
+void capacity_for_fee(const NetworkSummary& network, const Config& config,
+                      int node0_rank,
+                      uint64_t max_fee_msat, uint64_t basefee_msat, uint64_t feerate_msat, const LiquidityDirection& testDirection)
+{
+  // already reached nodes/edges for this browse
+  QVector<bool> reached_nodes(network.nodes.size(), false);
+  QVector<bool> reached_edges(network.edges.size(), false);
+
+  //recursive browse lambda.
+  //Called for each edge of a node.
+  //It will call itself while a path contains not yet used edges and total fee from origin to las node is not the max one
+  uint64_t current_cost_mstat = 0;
+
+  //browse a new node and beyond (recursive until a max_cost is reached
+  auto browse_node = [&network,&reached_nodes, &reached_edges](int origin_node_rank, int browsed_edge_rank,
+          qint64 current_cost_msat, uint64_t max_cost_msat,
+          LiquidityDirection tested_direction)
+  {
+    const Edge edge = network.edges[browsed_edge_rank];
+    const Node& node0 = network.nodes[origin_node_rank];
+    int other_node_rank = edge.side[0].node_rank == origin_node_rank? edge.side[1].node_rank : edge.side[0].node_rank;
+    const Node& node1 = network.nodes[other_node_rank];
+
+    int64_t edge_cost;
+
+
+  };
+
+}

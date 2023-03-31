@@ -31,10 +31,17 @@ class Edge
 {
 public:
   //Node ranks. First is the smallest, not the initiator
-  qint32 node1, node2;
   qint32 capacity;
   int capacity_counted=-1;
   bool isZbf=true;
+
+  typedef struct
+  {
+    int node_rank;
+    int base_fee_msat=0;
+    int feerate_msat = 0;
+  }Side;
+  Side side[2];
 };
 
 

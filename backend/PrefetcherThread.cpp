@@ -129,8 +129,8 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
 
       network->edges.push_back(Edge());
       Edge& edge = network->edges.back();
-      edge.node1 = std::min(node1_rank, node2_rank);
-      edge.node2 = std::max(node1_rank, node2_rank);
+      edge.side[0].node_rank=node1_rank;
+      edge.side[1].node_rank=node2_rank;
       QString cap_val = edge_object.value("capacity").toString();
       edge.capacity = atoi(cap_val.toUtf8().constData());
 

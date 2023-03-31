@@ -10,4 +10,5 @@ typedef enum
     FURTHER
 }EdgeDirection;
 
+
 #endif // EDGEDIRECTION_HPP
