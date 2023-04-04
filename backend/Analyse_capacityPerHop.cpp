@@ -95,7 +95,7 @@ void capacity_per_hop(ReachTree& reach_tree, const NetworkSummary& networkRef, H
           //const Node& other_node = network.nodes[other_node_rank];
           if(result.edge_capacity_counted[edge_rank] <0)
           {
-            result.capacities[search_depth] += edge.capacity;
+            result.capacities[search_depth] += std::min<long long>(config.minCap, edge.capacity);
             result.edge_capacity_counted[edge_rank] = search_depth;
           }
 
@@ -208,10 +208,21 @@ void capacity_for_fee(const NetworkSummary& network, const Config& config,
   {
     const Edge edge = network.edges[browsed_edge_rank];
     const Node& node0 = network.nodes[origin_node_rank];
-    int other_node_rank = edge.side[0].node_rank == origin_node_rank? edge.side[1].node_rank : edge.side[0].node_rank;
+    const int origin_side = edge.side[0].node_rank == origin_node_rank? 0:1;
+    const int destination_side = 1-origin_side;
+    const int other_node_rank = edge.side[destination_side].node_rank;
     const Node& node1 = network.nodes[other_node_rank];
 
-    int64_t edge_cost;
+
+    /*
+     * Side that pays the fee.
+     * If LiquidityDirection = Outbound, we calculate fee for transacton from origin_node to the new one.
+     * the fee paid is the one on the destination side of an edge, so on the destination side.
+     */
+     /*int side_for_estimaton =
+
+
+    int64_t edge_cost;*/
 
 
   };
