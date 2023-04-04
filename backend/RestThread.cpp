@@ -147,7 +147,6 @@ void GET_nodeadvice(const QString& resource, json::value& body)
             body["error"] = json::value("Capacity should be a positive number of satoshi.");
             return;
         }
-    config.minCap = cap;
 
     if(args.size()>=3)
         config.zbfPaths = args[2] == "true";
@@ -194,6 +193,7 @@ void GET_nodeadvice(const QString& resource, json::value& body)
         // -> estimate next channel as if it is the masx size of current channels
         cap = std::min(cap, max_cap);
     }
+    config.minCap = cap;
 
 
     Result result;
