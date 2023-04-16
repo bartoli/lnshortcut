@@ -130,7 +130,13 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
       network->edges.push_back(Edge());
       Edge& edge = network->edges.back();
       edge.side[0].node_rank=node1_rank;
-      edge.side[1].node_rank=node2_rank;
+      edge.side[0].base_fee_msat = atoi(policy1.toObject().value("fee_base_msat").toString().toUtf8().constData());
+      edge.side[0].feerate_msat = atoi(policy1.toObject().value("fee_rate_milli_msat").toString().toUtf8().constData());
+      edge.side[0].max_htlc_msat = atoll(policy1.toObject().value("max_htlc_msat").toString().toUtf8().constData());
+      edge.side[1].node_rank= node2_rank;
+      edge.side[1].base_fee_msat = atoi(policy2.toObject().value("fee_base_msat").toString().toUtf8().constData());
+      edge.side[1].feerate_msat = atoi(policy2.toObject().value("fee_rate_milli_msat").toString().toUtf8().constData());
+      edge.side[1].max_htlc_msat = atoll(policy2.toObject().value("max_htlc_msat").toString().toUtf8().constData());
       QString cap_val = edge_object.value("capacity").toString();
       edge.capacity = atoi(cap_val.toUtf8().constData());
 

@@ -215,8 +215,18 @@ void AnalysisThread::newWork(const QString& node0)
       return;
 
   Config config;
-  config.minCap = 2500000,
-  analyseHops(*network, node0_rank, config, result);
+  config.minCap = 2500000;
+  //analyseHops(*network, node0_rank, config, result);
+
+  //Contains the result of a CPF analysis
+  //-direction that needs the most liquidity
+  //-current reachable edges in that direction
+  struct CPFResult
+  {
+    LiquidityDirection worstDirection;
+  };
+  capacity_for_fee(*network, config, node0_rank, 1000, 1000000, LiquidityDirection::OUTBOUND);
+  capacity_for_fee(*network, config, node0_rank, 1000, 1000000, LiquidityDirection::INBOUND);
 }
 
 AnalysisThread* AnalysisThread::getInstance()

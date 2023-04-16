@@ -33,7 +33,7 @@ void capacity_per_hop(ReachTree& reach_tree, const NetworkSummary& networkRef, H
 typedef enum
 {
     INBOUND,
-    OUTPBOUND
+    OUTBOUND
 } LiquidityDirection;
 
 /*
@@ -43,6 +43,7 @@ typedef enum
  */
 
 void capacity_for_fee(const NetworkSummary& network, const Config& config,
-                      uint64_t max_fee_msat, uint64_t basefee_msat, uint64_t feerate_msat, const LiquidityDirection& testDirection);
+                       int node0_rank, uint64_t max_fee_sat, uint64_t test_amt_sat,
+                       const LiquidityDirection& testDirection);
 
 #endif // ANALYSE_CAPACITYPERHOP_HPP

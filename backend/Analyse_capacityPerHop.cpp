@@ -4,6 +4,9 @@
 #include <Hopness.hpp>
 #include <NetworkSummary.hpp>
 
+#include <QDebug>
+#include <set>
+
 //Compute, for each level of hops, the reached capacity
 //testEdges: node ranks to add simulated edge to
 void capacity_per_hop(ReachTree& reach_tree, const NetworkSummary& networkRef, Hopness& result, int node0_rank, const Config& config, std::vector<int> testEdges)
@@ -189,42 +192,94 @@ void capacity_per_hop(ReachTree& reach_tree, const NetworkSummary& networkRef, H
 
 
 void capacity_for_fee(const NetworkSummary& network, const Config& config,
-                      int node0_rank,
-                      uint64_t max_fee_msat, uint64_t basefee_msat, uint64_t feerate_msat, const LiquidityDirection& testDirection)
+                      int node0_rank, uint64_t max_fee_sat, uint64_t test_amt_sat,
+                      const LiquidityDirection& testDirection)
 {
-  // already reached nodes/edges for this browse
-  QVector<bool> reached_nodes(network.nodes.size(), false);
-  QVector<bool> reached_edges(network.edges.size(), false);
+  /*TODO:
+    Assume that a loop always only adds cost. So keep the list of reached edges for a recursion branch, and do not got through nodes already reached on that branch
 
-  //recursive browse lambda.
+
+  */
+
+  //Work Data shared with the recursive routine
+  // already reached nodes/edges for this browse
+  std::vector<uint64_t> reached_nodes(network.nodes.size(), ULONG_LONG_MAX);
+  // already reached_edges. the value is the max channel capacity that could be used (depending on width of previous channels to it)
+  std::vector<uint64_t> reached_edges(network.edges.size(), ULONG_LONG_MAX);
+
   //Called for each edge of a node.
   //It will call itself while a path contains not yet used edges and total fee from origin to las node is not the max one
-  uint64_t current_cost_mstat = 0;
+
+  std::function<void(int,int,uint64_t,uint64_t)> browse_edge;
+  auto browse_node = [&](int node_rank, uint64_t current_cost_msat, uint64_t width_sat, int origin_edge_rank)
+  {
+      reached_nodes[node_rank] = current_cost_msat;
+      const Node& reached_node = network.nodes[node_rank];
+      //if(current_cost_msat<(max_fee_sat*1000))//useless iff, otherwise, the edge leading to it wouldn't have been crossed?
+      {
+          for(int ie=0, cnt=reached_node.edges.size();ie<cnt;++ie)
+          {
+              int edge_rank = reached_node.edges[ie];
+              //Do not go back and forth on the same edge
+              if(edge_rank == origin_edge_rank)
+                  continue;
+
+              const Edge& edge = network.edges[edge_rank];
+              if(edge.capacity<width_sat*2ULL)//assume a channel is on average with 50% cap on each side?
+                  continue;
+              browse_edge(edge_rank, node_rank, current_cost_msat, width_sat);
+          }
+      }
+  };
 
   //browse a new node and beyond (recursive until a max_cost is reached
-  auto browse_node = [&network,&reached_nodes, &reached_edges](int origin_node_rank, int browsed_edge_rank,
-          qint64 current_cost_msat, uint64_t max_cost_msat,
-          LiquidityDirection tested_direction)
+  browse_edge = [&](int browsed_edge_rank, int origin_node_rank, uint64_t current_cost_msat, uint64_t width_sat)
   {
-    const Edge edge = network.edges[browsed_edge_rank];
-    const Node& node0 = network.nodes[origin_node_rank];
+    //qWarning() << "Browsing edge "<<browsed_edge_rank;
+    const Edge& edge = network.edges[browsed_edge_rank];
     const int origin_side = edge.side[0].node_rank == origin_node_rank? 0:1;
     const int destination_side = 1-origin_side;
-    const int other_node_rank = edge.side[destination_side].node_rank;
-    const Node& node1 = network.nodes[other_node_rank];
-
 
     /*
-     * Side that pays the fee.
+     * Side whose fee to account
      * If LiquidityDirection = Outbound, we calculate fee for transacton from origin_node to the new one.
      * the fee paid is the one on the destination side of an edge, so on the destination side.
      */
-     /*int side_for_estimaton =
+     const int side_for_fee = (testDirection == LiquidityDirection::OUTBOUND? destination_side : origin_side);
+     const Edge::Side& fee_side = edge.side[side_for_fee];
+     if(fee_side.max_htlc_msat<width_sat*1000ULL)
+         return;
+     const int64_t edge_cost_msat = fee_side.base_fee_msat + (fee_side.feerate_msat*test_amt_sat)/1000;
 
+     if(current_cost_msat+edge_cost_msat > (max_fee_sat*1000))
+     {
+         //qWarning()<<"Max cost reached";
+         //Max cost reached. we can not cross this edge. Return
+         return;
+     }
+     current_cost_msat += edge_cost_msat;
 
-    int64_t edge_cost;*/
+     //edge crossable.
+     //Mark the edge as as reached, and add its capacity to reachable capacity
+     reached_edges[browsed_edge_rank] = std::min<uint64_t>(current_cost_msat, reached_edges[browsed_edge_rank]);
+     //Add edge capacity as reached capacity
 
-
+     //If dest node was not already in browsed nodes, we will need to browse its edges next
+     const int other_node_rank = edge.side[destination_side].node_rank;
+     if(current_cost_msat >= reached_nodes[other_node_rank] )
+     {
+         //qWarning()<<"Reached node already browsed";
+         return;
+     }
+     //Look at it's edges if we can reach more
+     browse_node(other_node_rank, current_cost_msat, width_sat, browsed_edge_rank);
   };
+
+  browse_node(node0_rank, 0, test_amt_sat, -1);
+  //qWarning() << reached_sats/100000000.<<"BTC reached";
+  qWarning() << network.edges.size() - std::count(reached_edges.begin(), reached_edges.end(), ULONG_LONG_MAX) << "edges reached";
+  qWarning() << network.nodes.size() - std::count(reached_nodes.begin(), reached_nodes.end(), ULONG_LONG_MAX) << "nodes reached";
+
+  return;
 
 }

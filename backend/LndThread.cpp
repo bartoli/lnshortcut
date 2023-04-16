@@ -5,8 +5,11 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <ResultPool.hpp>
+#include <QJsonArray>
 
 int LndThread::_currentHeight = 0;
+QString LndThread::_nodePubkey;
+QMap<QString, LndThread::ChannelInfo> LndThread::_currentChannels;
 
 void LndThread::run()
 {
@@ -33,6 +36,7 @@ void LndThread::run()
         if(!_configOK())
             continue;
         _getInfo();
+        _getChanInfo();
 
     }
 }
@@ -44,6 +48,32 @@ void LndThread::_getInfo()
     if( _runLnCli({"getinfo"}, getinfo_result))
     {
       emit _getinfo_newresult(getinfo_result);
+    }
+}
+
+
+void LndThread::_getChanInfo()
+{
+    static QByteArray listchannels_result;
+    if(! _runLnCli({"listchannels"}, listchannels_result))
+      return;
+
+    QStringList channel_ids;
+
+    QJsonDocument responseDoc = QJsonDocument::fromJson(listchannels_result);
+    QJsonObject responseObj = responseDoc.object();
+    QJsonArray channels_array = responseObj.value("channels").toArray();
+    for(const QJsonValueRef chan : channels_array)
+    {
+        QString channel_id = chan.toObject().value("chan_id").toString();
+        //qWarning()<<"Found channel id "<<channel_id;
+        QByteArray chaninfo_result;
+        if(!_runLnCli({"getchaninfo", channel_id}, chaninfo_result))
+          continue;
+
+        //read both sides'pubkey to find which side is ours
+
+
     }
 }
 
@@ -89,7 +119,9 @@ bool LndThread::_configOK()
 void LndThread::_getinfo_fetchresult(const QByteArray& result)
 {
     QJsonDocument doc(QJsonDocument::fromJson(result));
-    int height = doc.object().value("block_height").toInt();
+    QJsonObject doc_obj = doc.object();
+    int height = doc_obj.value("block_height").toInt();
+    _nodePubkey = doc_obj.value("identity_pubkey").toInt();
     if(height != _currentHeight)
     {
       _currentHeight = height;

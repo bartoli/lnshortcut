@@ -40,6 +40,7 @@ public:
     int node_rank;
     int base_fee_msat=0;
     int feerate_msat = 0;
+    uint64_t max_htlc_msat = 0;
   }Side;
   Side side[2];
 };
