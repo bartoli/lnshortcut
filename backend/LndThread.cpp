@@ -21,6 +21,7 @@ void LndThread::run()
 
     // main loop, just to detect new block heights
     // the rest is done through signals
+    int chan_policy_loop=0;
     while(1)
     {
         uint64_t work_id, amt_sat;
@@ -36,7 +37,13 @@ void LndThread::run()
         if(!_configOK())
             continue;
         _getInfo();
-        _getChanInfo();
+        //optimize channels policy only once per hour
+        chan_policy_loop++;
+        if(chan_policy_loop > 3600)
+        {
+          chan_policy_loop = 0;
+          _getChanInfo();
+        }
 
     }
 }
@@ -63,17 +70,77 @@ void LndThread::_getChanInfo()
     QJsonDocument responseDoc = QJsonDocument::fromJson(listchannels_result);
     QJsonObject responseObj = responseDoc.object();
     QJsonArray channels_array = responseObj.value("channels").toArray();
+
+    QString chosen_chan_point;
+    QString chosen_base_fee_msat;
+    QString chosen_feerate_msat;
+    int chosen_tld;
+    uint64_t fixed_max_htlc=0, max_delta=0;
+
     for(const QJsonValueRef chan : channels_array)
     {
         QString channel_id = chan.toObject().value("chan_id").toString();
-        //qWarning()<<"Found channel id "<<channel_id;
+        uint64_t local_balance = atoll(chan.toObject().value("local_balance").toString().toUtf8().constData());
+        //qWarning()<<"Found channel id "<<channel_id<<" with local balance "<<local_balance;
         QByteArray chaninfo_result;
         if(!_runLnCli({"getchaninfo", channel_id}, chaninfo_result))
           continue;
 
         //read both sides'pubkey to find which side is ours
+        QJsonDocument responseDoc2 = QJsonDocument::fromJson(chaninfo_result);
+        QJsonObject responseObj2 = responseDoc2.object();
+        QString node1_pubkey = responseObj2.value("node1_pub").toString();
+        QString node2_pubkey = responseObj2.value("node2_pub").toString();
+        QString chan_point = responseObj2.value("chan_point").toString();
+        uint64_t capacity = atoll(responseObj2.value("capacity").toString().toUtf8().constData());
+        bool node_is_first_side = (node1_pubkey == _nodePubkey);
+        QString policy_key = node_is_first_side? "node1_policy" : "node2_policy";
+        QJsonObject nodePolicyObject = responseObj2.value(policy_key).toObject();
 
+        //uint64_t min_htlc_msat = atoll(nodePolicyObject.value("min_htlc").toString().toUtf8().constData());
+        uint64_t max_htlc_msat = atoll(nodePolicyObject.value("max_htlc_msat").toString().toUtf8().constData());
 
+        //Before having an optimal value, dues it hafe a valid value (priority to update it compared to others)?
+        //Apparently, does not happen, RTL/lnd did not alow setting max=0 when min=1000?
+        /*bool valid = true;
+        if(min_htlc_msat> max_htlc_msat)
+        {
+            valid = false;
+            qWarning()<<"Channel "<<channel_id<<" has invalid max_htlc<min_htlc";
+        }*/
+        uint64_t optimal_max_htlc = local_balance-25000;
+        if(optimal_max_htlc<=0)
+            optimal_max_htlc = 25000;//min_htlc
+        if(optimal_max_htlc>capacity-25000)
+            optimal_max_htlc = capacity-25000;
+        int64_t htlc_delta = llabs((int64_t)max_htlc_msat/1000 - (int64_t)local_balance);
+        if(htlc_delta > 25000)
+        {
+          qWarning()<<"Channel "<<channel_id<<" has wrong max htlc ("<<max_htlc_msat/1000<<", should be "<<optimal_max_htlc<<", local balance is "<<local_balance<<")";
+          if(max_delta< htlc_delta)
+          {
+              max_delta = htlc_delta;
+              chosen_chan_point = chan_point;
+              chosen_base_fee_msat = nodePolicyObject.value("fee_base_msat").toString();
+              chosen_feerate_msat = nodePolicyObject.value("fee_rate_milli_msat").toString();
+              chosen_tld = nodePolicyObject.value("time_lock_delta").toInt();
+              fixed_max_htlc = optimal_max_htlc;
+          }
+        }
+    }
+    if(max_delta>0)
+    {
+        qWarning()<<"Fixing "<<chosen_chan_point<<" has wrong max htlc ("<<fixed_max_htlc<<")";
+        QByteArray output;
+        _runLnCli({"updatechanpolicy",
+                   "--max_htlc_msat",QString::number(fixed_max_htlc*1000ULL),
+                   "--chan_point",chosen_chan_point,
+                   "--base_fee_msat", chosen_base_fee_msat,
+                   "--fee_rate_ppm", chosen_feerate_msat,
+                   "--time_lock_delta", QString::number(chosen_tld)}
+                  ,output);
+
+        qWarning()<<output;
     }
 }
 
@@ -121,7 +188,7 @@ void LndThread::_getinfo_fetchresult(const QByteArray& result)
     QJsonDocument doc(QJsonDocument::fromJson(result));
     QJsonObject doc_obj = doc.object();
     int height = doc_obj.value("block_height").toInt();
-    _nodePubkey = doc_obj.value("identity_pubkey").toInt();
+    _nodePubkey = doc_obj.value("identity_pubkey").toString();
     if(height != _currentHeight)
     {
       _currentHeight = height;
