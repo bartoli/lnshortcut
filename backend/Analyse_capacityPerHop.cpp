@@ -133,14 +133,14 @@ void capacity_per_hop(ReachTree& reach_tree, const NetworkSummary& networkRef, H
     result.capacities.append(0);
     analyze_node_edges(node0_rank);
     //qWarning()<<QString("Reached capacity : %1").arg(result.capacities[search_depth]/100000000.0);
-    int total_reached_nodes=0;
+    //int total_reached_nodes=0;
     while(!reach_tree[search_depth].empty())
     {
       result.capacities.append(0);
       int reached_depth = search_depth; //depth of the nodes to analyze edees of
       ++search_depth; //newly reached depth to put analyse results to
       int reached_count = reach_tree[reached_depth].size();
-      total_reached_nodes += reached_count;
+      //total_reached_nodes += reached_count;
       /*qWarning()<<QString("Depth %1 : %2 nodes reached")
                   .arg(reached_depth)
                   .arg(reached_count);*/
@@ -225,7 +225,9 @@ void capacity_for_fee(const NetworkSummary& network, const Config& config,
                   continue;
 
               const Edge& edge = network.edges[edge_rank];
-              if(edge.capacity<width_sat*2ULL)//assume a channel is on average with 50% cap on each side?
+              //assume a channel is on average with 50% cap on each side?
+              //to be replaced by max htlc_test on the current direction
+              if(edge.capacity<width_sat*2ULL)
                   continue;
               browse_edge(edge_rank, node_rank, current_cost_msat, width_sat);
           }

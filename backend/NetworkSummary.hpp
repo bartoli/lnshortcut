@@ -6,6 +6,7 @@
 #include <limits.h>
 #include <QSet>
 #include <QMap>
+ class Config;
 
 class Node
 {
@@ -23,15 +24,17 @@ public:
     //does te node have 0 base fee on his side of all channels
     bool isZbf=true;
     //smallest channel size of the node
-    int minChanSize=INT_MAX;
+    uint32_t minChanSize = INT_MAX;
     //node alias
     QString alias;
+    //is the node allowed as endoiint? Yes unless otherwise specified
+    bool validEndpoint = true;
 };
 class Edge
 {
 public:
   //Node ranks. First is the smallest, not the initiator
-  qint32 capacity;
+  uint32_t capacity;
   int capacity_counted=-1;
   bool isZbf=true;
 
@@ -79,6 +82,7 @@ public:
     int zbfNodes = 0;
     int zbfEdges = 0;
 
+    NetworkSummary filter(const Config&, int node0_rank) const;
 
 };
 

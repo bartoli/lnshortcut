@@ -1,4 +1,5 @@
-#include "Config.hpp"
+#include <Config.hpp>
+#include <NetworkSummary.hpp>
 
 Config::Config()
 {
@@ -45,7 +46,27 @@ Config::Config()
 
     //0-based hop count for list of candidates
     candidates_depth = 1;
+}
 
+bool Config::excludesNode(const Node& node) const
+{
+  const Config& cfg(*this);
 
+  bool reachable_on_clearnet = node.clearnet && cfg.clearnetNodes;
+  bool reachable_on_tor = node.tor && cfg.torNodes;
+  if (!(reachable_on_clearnet || reachable_on_tor))
+          return true;
 
+  return false;
+};
+
+bool Config::excludesEdge(const Edge& edge) const
+{
+  const Config& cfg(*this);
+
+  if(cfg.minCap > edge.capacity)
+      return true;
+  //biggest of max_htlc_msat of both sides should also be greater than tested cpacity
+
+  return false;
 }

@@ -141,7 +141,7 @@ void GET_nodeadvice(const QString& resource, json::value& body)
         return;
     }
     QString node_pubkey = args[0];
-    int cap = atoi(args[1].toUtf8().constData());
+    uint32_t cap = atoi(args[1].toUtf8().constData());
     if(cap<=0)
         {
             body["error"] = json::value("Capacity should be a positive number of satoshi.");
@@ -168,16 +168,16 @@ void GET_nodeadvice(const QString& resource, json::value& body)
     }
     //Is it a lns peer? Is capacity not more than capacity connected to lns?
     {
-        int lns_capacity = 0;
+        //int lns_capacity = 0;
         const Node& node = network->nodes[node_rank];
-        int max_cap = 0;
+        uint32_t max_cap = 0;
         for(const int edge_rank : node.edges)
         {
             const Edge& edge = network->edges[edge_rank];
-            int other_node_rank = edge.side[0].node_rank == node_rank? edge.side[1].node_rank : edge.side[0].node_rank;
-            max_cap = std::max(max_cap, edge.capacity);
+            max_cap = std::max(max_cap, edge.capacity);            
+            /*int other_node_rank = edge.side[0].node_rank == node_rank? edge.side[1].node_rank : edge.side[0].node_rank;
             if(other_node_rank == network->lns_noderank)
-                lns_capacity += edge.capacity;
+                lns_capacity += edge.capacity;*/
         }
         /*if(node_rank != network->lns_noderank && lns_capacity<cap)
         {

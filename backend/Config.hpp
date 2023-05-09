@@ -5,7 +5,8 @@
 #include <QSet>
 #include <QString>
 
-
+class Node;
+class Edge;
 
 /*
  * Global config
@@ -36,6 +37,12 @@ public:
     bool zbfEndpoints = true;
     //Analyze ony zbf paths
     bool zbfPaths = true;
+    bool clearnetNodes = true;
+    bool torNodes=false;
+
+
+    bool excludesNode(const Node& node) const;
+    bool excludesEdge(const Edge& node) const;
 
 };
 

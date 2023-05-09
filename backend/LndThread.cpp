@@ -74,7 +74,7 @@ void LndThread::_getChanInfo()
     QString chosen_chan_point;
     QString chosen_base_fee_msat;
     QString chosen_feerate_msat;
-    int chosen_tld;
+    int chosen_tld = 80;
     uint64_t fixed_max_htlc=0, max_delta=0;
 
     for(const QJsonValueRef chan : channels_array)
@@ -108,16 +108,17 @@ void LndThread::_getChanInfo()
             valid = false;
             qWarning()<<"Channel "<<channel_id<<" has invalid max_htlc<min_htlc";
         }*/
-        uint64_t optimal_max_htlc = local_balance-25000;
+        uint64_t reserve = 25000;
+        uint64_t optimal_max_htlc = local_balance;
         if(optimal_max_htlc<=0)
-            optimal_max_htlc = 25000;//min_htlc
-        if(optimal_max_htlc>capacity-25000)
-            optimal_max_htlc = capacity-25000;
-        int64_t htlc_delta = llabs((int64_t)max_htlc_msat/1000 - (int64_t)local_balance);
-        if(htlc_delta > 25000)
+            optimal_max_htlc = reserve;//min_htlc
+        if(optimal_max_htlc>capacity-reserve)
+            optimal_max_htlc = capacity-reserve;
+        uint64_t htlc_delta = llabs((int64_t)max_htlc_msat/1000 - (int64_t)optimal_max_htlc);
+        if(htlc_delta > 0/*reserve*/)
         {
-          qWarning()<<"Channel "<<channel_id<<" has wrong max htlc ("<<max_htlc_msat/1000<<", should be "<<optimal_max_htlc<<", local balance is "<<local_balance<<")";
-          if(max_delta< htlc_delta)
+          qWarning()<<"Channel "<<channel_id<<"/"<<chan_point<<" has wrong max htlc ("<<max_htlc_msat/1000<<", should be "<<optimal_max_htlc<<", local balance is "<<local_balance<<")";
+          if(max_delta < htlc_delta)
           {
               max_delta = htlc_delta;
               chosen_chan_point = chan_point;
@@ -145,7 +146,7 @@ void LndThread::_getChanInfo()
 }
 
 
-void LndThread::_generateDonateInvoice(uint64_t workId, uint64_t amt_sats, QString& invoice)
+void LndThread::_generateDonateInvoice(uint64_t /*workId*/, uint64_t amt_sats, QString& invoice)
 {
     //static variable, to be able to emit the output only by reference (and used the latest output in case some signals were slow to be handled?)
     //beware to not use the output anymore while the new one is being written in place!

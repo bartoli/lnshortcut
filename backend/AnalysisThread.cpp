@@ -33,10 +33,13 @@ void AnalysisThread::analyseHops(const NetworkSummary& networkRef, const int& no
     auto compare_results = [](const QList<qint64>& ref, const QList<qint64>& r2) -> quint64
     {
       qint64 nearer_capacity=0;
-      for (int h=0;h<ref.size();++h)
+      for (int h=2;h<ref.size();++h)
       {
         //if there are less sats on one hop level, they are now nearer
-        qint64 delta = r2[h] - ref[h];
+        qint64 new_reach = 0;
+        if(r2.size()>h) //we might have one less max hop level afer a connection!
+          new_reach = r2[h];
+        qint64 delta = new_reach - ref[h];
         if(delta < 0)
           nearer_capacity -= delta;
       }
@@ -149,8 +152,8 @@ void AnalysisThread::analyseHops(const NetworkSummary& networkRef, const int& no
             int node_rank = cand[i];
             const Node& cand_node = net_ref.nodes[node_rank];
 
-            if(!net_ref.nodes[node_rank].clearnet)
-                continue;
+            /*if(!net_ref.nodes[node_rank].clearnet)
+                continue;*/
             if(cand_node.minChanSize>config.minCap)
                 continue;
             if(config.ignored_endpoint_nodes.contains(cand_node.pubKey))
@@ -209,7 +212,7 @@ void AnalysisThread::newWork(const QString& node0)
    NetworkSummary* network = PrefetcherThread::getInstance()->_currentNetwork;
    if(!network)
      return;
-  Result result;
+  //Result result;
   int node0_rank = network->node_index.value(node0,-1);
   if(node0_rank<0)
       return;
@@ -224,9 +227,20 @@ void AnalysisThread::newWork(const QString& node0)
   struct CPFResult
   {
     LiquidityDirection worstDirection;
+    //candidate for 'max new reachable edges in OUTBOUND direction'
+    //candidate for 'max new reachable edges in INBOUND direction'
+    //candidate for 'max new reachable edges total'
+    //candidate fof 'max new reachable edges with balanced inbound/outbound'
+    //same as previous fours, but not acounting for aleasdy reached edges
+    //browse data for the candidates, indexed by candidate rank
   };
-  capacity_for_fee(*network, config, node0_rank, 1000, 1000000, LiquidityDirection::OUTBOUND);
-  capacity_for_fee(*network, config, node0_rank, 1000, 1000000, LiquidityDirection::INBOUND);
+
+  const NetworkSummary filtered_network = network->filter(config, node0_rank);
+  node0_rank = filtered_network.node_index.value(network->nodes[node0_rank].pubKey);
+  qWarning()<<"Filtered network has "<<filtered_network.nodes.size()<<" nodes and "<<filtered_network.edges.size()<<" edges";
+
+  capacity_for_fee(filtered_network, config, node0_rank, 500, 1000000, LiquidityDirection::OUTBOUND);
+  capacity_for_fee(filtered_network, config, node0_rank, 500, 1000000, LiquidityDirection::INBOUND);
 }
 
 AnalysisThread* AnalysisThread::getInstance()
