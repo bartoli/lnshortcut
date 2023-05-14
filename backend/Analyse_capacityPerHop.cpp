@@ -193,7 +193,8 @@ void capacity_per_hop(ReachTree& reach_tree, const NetworkSummary& networkRef, H
 
 void capacity_for_fee(const NetworkSummary& network, const Config& config,
                       int node0_rank, uint64_t max_fee_sat, uint64_t test_amt_sat,
-                      const LiquidityDirection& testDirection)
+                      const LiquidityDirection& testDirection,
+                      CFF_Result& result)
 {
   /*TODO:
     Assume that a loop always only adds cost. So keep the list of reached edges for a recursion branch, and do not got through nodes already reached on that branch
@@ -279,8 +280,59 @@ void capacity_for_fee(const NetworkSummary& network, const Config& config,
 
   browse_node(node0_rank, 0, test_amt_sat, -1);
   //qWarning() << reached_sats/100000000.<<"BTC reached";
-  qWarning() << network.edges.size() - std::count(reached_edges.begin(), reached_edges.end(), ULONG_LONG_MAX) << "edges reached";
-  qWarning() << network.nodes.size() - std::count(reached_nodes.begin(), reached_nodes.end(), ULONG_LONG_MAX) << "nodes reached";
+  int reached_edges_count = network.edges.size() - std::count(reached_edges.begin(), reached_edges.end(), ULONG_LONG_MAX);
+  int reached_nodes_count = network.nodes.size() - std::count(reached_nodes.begin(), reached_nodes.end(), ULONG_LONG_MAX);
+  qWarning() << reached_edges_count << "edges reached";
+  qWarning() << reached_nodes_count << "nodes reached";
+
+
+
+  result[node0_rank] = {reached_edges_count, reached_nodes_count};
+
+  //Now evaluate the extra connecton for each candidates
+  //Build list of nodes to avoid evaluating
+  QSet<int> already_connected_ranks;
+  already_connected_ranks.insert(node0_rank);
+  const Node& node0 = network.nodes[node0_rank];
+  for (auto edge_rank : node0.edges)
+  {
+     const Edge& edge = network.edges[edge_rank];
+     int other_side = edge.side[0].node_rank==node0_rank? 1:0;
+      already_connected_ranks.insert(edge.side[other_side].node_rank);
+  }
+
+  auto base_reached_nodes = reached_nodes;
+  auto base_reached_edges = reached_edges;
+  int best_candidate=-1;
+  int best_reached_nodes=0;
+  int best_reached_edges=0;
+  //int best_node_capcity=0;
+
+  for(int reached_node_rank=0; reached_node_rank < reached_nodes.size(); ++reached_node_rank)
+  {
+      /*if(reached_nodes[reached_node_rank]==ULONG_LONG_MAX)
+          return;*/
+      if(already_connected_ranks.contains(reached_node_rank))
+          continue;
+      if(config.ignored_endpoint_nodes.contains(network.nodes[reached_node_rank].pubKey))
+          continue;
+      reached_nodes = base_reached_nodes;
+      reached_edges = base_reached_edges;
+      browse_node(reached_node_rank, 0, test_amt_sat, -1);
+      int new_reached_edges_count = network.edges.size() - std::count(reached_edges.begin(), reached_edges.end(), ULONG_LONG_MAX);
+      int new_reached_nodes_count = network.nodes.size() - std::count(reached_nodes.begin(), reached_nodes.end(), ULONG_LONG_MAX);
+      /*qWarning() << network.nodes[node_rank].pubKey;
+      qWarning() << new_reached_edges_count - reached_edges_count << "edges reached";
+      qWarning() << new_reached_nodes_count - reached_nodes_count << "nodes reached";*/
+      if(best_reached_edges<new_reached_edges_count)
+      {
+          best_candidate = reached_node_rank;
+          best_reached_edges = new_reached_edges_count;
+      }
+
+  }
+  qWarning() << network.nodes[best_candidate].pubKey;
+  qWarning() << best_reached_edges << "edges reached";
 
   return;
 

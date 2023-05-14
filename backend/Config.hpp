@@ -38,7 +38,7 @@ public:
     //Analyze ony zbf paths
     bool zbfPaths = true;
     bool clearnetNodes = true;
-    bool torNodes=false;
+    bool torNodes=true;
 
 
     bool excludesNode(const Node& node) const;

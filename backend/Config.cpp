@@ -38,6 +38,12 @@ Config::Config()
         "03037dc08e9ac63b82581f79b662a4d0ceca8a8ca162b1af3551595b8f2d97b70a",
         //cyberhub, min=0.1
         "03dc686001f9b1ff700dfb8917df70268e1919433a535e1fb0767c19223509ab57",
+        //yalls.org TOR, 0.16777215BTC
+        "03d06758583bb5154774a6eb221b1276c9e82d65bbaceca806d90e20c108f4b1c7",
+        //yalls.org clearnet, idem
+                    "0288be11d147e1525f7f234f304b094d6627d2c70f3313d7ba3696887b261c4447",
+        // ⚡G-Spot-21_69_420⚡, 0.0696942 Btc
+        "03c5528c628681aa17ab9e117aa3ee6f06c750dfb17df758ecabcd68f1567ad8c1"
 
 
     });

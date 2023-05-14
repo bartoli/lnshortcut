@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <stdint.h>
+#include <QMap>
 
 using ReachTree = std::vector<std::vector<int32_t>>;
 class Hopness;
@@ -42,8 +43,15 @@ typedef enum
  * @param feerate_msat  wanted fee (rate) for outbound connections from this channel
  */
 
+typedef struct
+{
+    int new_reached_edges;
+    int new_reached_nodes;
+}CFF_NodeResult;
+typedef QMap<int,CFF_NodeResult> CFF_Result;
+
 void capacity_for_fee(const NetworkSummary& network, const Config& config,
                        int node0_rank, uint64_t max_fee_sat, uint64_t test_amt_sat,
-                       const LiquidityDirection& testDirection);
+                       const LiquidityDirection& testDirection, CFF_Result& result);
 
 #endif // ANALYSE_CAPACITYPERHOP_HPP

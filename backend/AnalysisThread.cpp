@@ -239,8 +239,9 @@ void AnalysisThread::newWork(const QString& node0)
   node0_rank = filtered_network.node_index.value(network->nodes[node0_rank].pubKey);
   qWarning()<<"Filtered network has "<<filtered_network.nodes.size()<<" nodes and "<<filtered_network.edges.size()<<" edges";
 
-  capacity_for_fee(filtered_network, config, node0_rank, 500, 1000000, LiquidityDirection::OUTBOUND);
-  capacity_for_fee(filtered_network, config, node0_rank, 500, 1000000, LiquidityDirection::INBOUND);
+  CFF_Result inbound_results, outbound_results;
+  capacity_for_fee(filtered_network, config, node0_rank, 500, 1000000, LiquidityDirection::OUTBOUND, outbound_results);
+  capacity_for_fee(filtered_network, config, node0_rank, 500, 1000000, LiquidityDirection::INBOUND, inbound_results);
 }
 
 AnalysisThread* AnalysisThread::getInstance()
