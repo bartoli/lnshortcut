@@ -105,5 +105,19 @@ NetworkSummary NetworkSummary::filter(const Config& cfg, int node0_rank) const
         }
     }
 
+    out.updateIgnoredEndpoints(cfg);
+
     return out;
+}
+
+void NetworkSummary::updateIgnoredEndpoints(const Config& cfg)
+{
+  ignored_endpoints.clear();
+  //First fill based on known node min channel size VS config wanted channel size
+  auto it( cfg.min_chan_size_db.lowerBound(cfg.minCap) );
+  while( it != cfg.min_chan_size_db.end())
+  {
+    ignored_endpoints.insert(node_index[it.value()]);
+    ++it;
+  }
 }

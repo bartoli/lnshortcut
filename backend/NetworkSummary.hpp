@@ -29,6 +29,8 @@ public:
     QString alias;
     //is the node allowed as endoiint? Yes unless otherwise specified
     bool validEndpoint = true;
+    // median fee on the node's side
+    int median_fee_ppm=0;
 };
 class Edge
 {
@@ -44,6 +46,7 @@ public:
     int base_fee_msat=0;
     int feerate_msat = 0;
     uint64_t max_htlc_msat = 0;
+    bool disabled = false;
   }Side;
   Side side[2];
 };
@@ -82,8 +85,11 @@ public:
     int zbfNodes = 0;
     int zbfEdges = 0;
 
-    NetworkSummary filter(const Config&, int node0_rank) const;
+    // ignored endpoints (for current config), indexed by local node rank
+    QSet<int> ignored_endpoints;
 
+    NetworkSummary filter(const Config&, int node0_rank) const;
+    void updateIgnoredEndpoints(const Config&);
 };
 
 #endif // NETWORKSUMMARY_HPP

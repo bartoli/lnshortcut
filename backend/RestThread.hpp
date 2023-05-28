@@ -17,7 +17,7 @@ public:
     signals:
     void needDonateInvoice(int amt_sats, uint64_t workId);
 
-    static void GET_donateInvoice(const QString& resource, web::json::value& body);
+    //static void GET_donateInvoice(const QString& resource, web::json::value& body);
 };
 
 #endif // RESTTHREAD_HPP

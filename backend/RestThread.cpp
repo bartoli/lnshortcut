@@ -60,6 +60,8 @@ using namespace web::http::experimental::listener;
 #include <Hopness.hpp>
 #include <Config.hpp>
 #include <ResultPool.hpp>
+#include <QJsonDocument>
+#include <QJsonObject>
 using namespace std;
 
 #define TRACE(msg)            cout << msg
@@ -74,6 +76,60 @@ void display_json(
    qWarning() << prefix.c_str() << jvalue.serialize().c_str() << Qt::endl;
 }
 
+void answer_nodeinfo(const QJsonObject& request_json, json::value& response_body)
+{
+    NetworkSummary* network = PrefetcherThread::getInstance()->_currentNetwork;
+    if (network == nullptr)
+    {
+        response_body["error"] = json::value("Network graph informaton not available, please retry later.");
+        return;
+    }
+
+    QString node_pubkey = request_json.value("pubkey").toString();
+    int o_n_edges=0;
+    uint64_t o_cap_min = ULONG_MAX, o_cap_max=0, o_cap_avg=0, o_cap_ttl=0;
+    int o_peers=0;
+    int node_rank = network->node_index.value(node_pubkey, -1);
+    if(node_rank<0)
+    {
+        response_body["error"] = json::value(QString("Unknown node public key %1.").arg(node_pubkey).toUtf8().constData());
+        return;
+    }
+    bool lns_peer = node_rank==network->lns_noderank;
+
+    const Node& node = network->nodes[node_rank];
+    response_body["edges"] = node.edges.size();
+    QSet<int> peer_ranks;
+    for(int edge_rank : node.edges)
+    {
+        const Edge& edge = network->edges[edge_rank];
+        int other_node_rank = edge.side[0].node_rank==node_rank? edge.side[1].node_rank : edge.side[0].node_rank;
+        peer_ranks.insert(other_node_rank);
+        uint64_t edge_cap = edge.capacity;
+        o_cap_min =std::min(o_cap_min, edge_cap);
+        o_cap_max = std::max(o_cap_max, edge_cap);
+        o_cap_ttl += edge_cap;
+        if(other_node_rank == network->lns_noderank)
+            lns_peer = true;
+        o_n_edges++;
+    }
+    o_cap_avg = o_cap_ttl/node.edges.size();
+    o_peers = peer_ranks.size();
+
+    //tor and/tor clearnet?
+    response_body["on_tor"] = node.tor;
+    response_body["on_clearnet"] = node.clearnet;
+
+    response_body["edges"] = o_n_edges;
+    response_body["peers"] = o_peers;
+    response_body["cap_min"] = o_cap_min;
+    response_body["cap_max"] = o_cap_max;
+    response_body["cap_avg"] = o_cap_avg;
+    response_body["cap_total"] = o_cap_ttl;
+    response_body["lns_peer"] = lns_peer;
+
+    return;
+}
 void GET_nodeinfo(const QString& resource, json::value& body)
 {
     QString node_pubkey = resource.mid(11);
@@ -128,6 +184,76 @@ void GET_nodeinfo(const QString& resource, json::value& body)
     body["lns_peer"] = lns_peer;
 
     return;
+}
+
+void answer_nodeadvice(const QJsonObject& request_json, json::value& response_body)
+{
+  qWarning() << request_json;
+  QString pubkey = request_json.value("pubkey").toString();
+  uint32_t capacity = atoll(request_json.value("capacity").toString().toUtf8().constData());
+  bool zbf_edges = request_json.value("zbfEdges").toBool();
+  bool zbf_nodes = request_json.value("zbfNodes").toBool();
+
+  if(capacity<=0)
+  {
+    response_body["error"] = json::value("Capacity should be a positive number of satoshi.");
+    return;
+  }
+
+  //Is there a prefetched network graph yet?
+  NetworkSummary* network = PrefetcherThread::getInstance()->_currentNetwork;
+  if (network == nullptr)
+  {
+      response_body["error"] = json::value("Network graph informaton not available, please retry later.");
+      return;
+  }
+  int node_rank = network->node_index.value(pubkey,-1);
+  if(node_rank < 0)
+  {
+      response_body["error"] = json::value("Unknown node public key");
+      return;
+  }
+  //Is it a lns peer? Is capacity not more than capacity connected to lns?
+  {
+      //int lns_capacity = 0;
+      const Node& node = network->nodes[node_rank];
+      uint32_t max_cap = 0;
+      for(const int edge_rank : node.edges)
+      {
+          const Edge& edge = network->edges[edge_rank];
+          max_cap = std::max(max_cap, edge.capacity);
+          /*int other_node_rank = edge.side[0].node_rank == node_rank? edge.side[1].node_rank : edge.side[0].node_rank;
+          if(other_node_rank == network->lns_noderank)
+              lns_capacity += edge.capacity;*/
+      }
+      /*if(node_rank != network->lns_noderank && lns_capacity<cap)
+      {
+          body["error"] = json::value("Can't advise for channels with more capacity than the sum of the channels connected to LNSHortcut");
+          return status_codes::OK;
+      }*/
+      // Adjust analysed capacity to max existing capacity.
+      // It makes no sense to analyse for more than the curent bigger channel,
+      // since we need at least 2 channels at that capacity to actually route that size
+      // For the general user, it could happen if they have enough cap connected to LNS, but in multiple channels.
+      // For lns node, it can happen when we analyse for a bigger capacity than the existing channels.
+      // There are no nodes to reach with at least that capacity, so we are looking at empty lists of reached nodes at any hop level
+      // -> estimate next channel as if it is the masx size of current channels
+      capacity = std::min(capacity, max_cap);
+  }
+  Config config;
+  config.minCap = capacity;
+
+
+  Result result;
+
+  AnalysisThread::analyseHops(*network, node_rank, config, result);
+
+  response_body["node0"] = json::value(pubkey.toUtf8().constData());
+  response_body["node2"] = json::value(network->nodes[result.node2].pubKey.toUtf8().constData());
+  response_body["node3"] = json::value(network->nodes[result.node3].pubKey.toUtf8().constData());
+  response_body["cap0"] = capacity;
+  response_body["cap2"] = result.cap2;
+  response_body["cap3"] = result.cap3;
 }
 
 void GET_nodeadvice(const QString& resource, json::value& body)
@@ -210,7 +336,7 @@ void GET_nodeadvice(const QString& resource, json::value& body)
     return;
 }
 
-void RestThread::GET_donateInvoice(const QString& resource, json::value& body)
+/*void RestThread::GET_donateInvoice(const QString& resource, json::value& body)
 {
     QStringList args = resource.mid(16).split('/');
     if(args.isEmpty())
@@ -228,17 +354,48 @@ void RestThread::GET_donateInvoice(const QString& resource, json::value& body)
     QString result;
     ResultPool::getInstance()->waitForResult_invoice((intptr_t)QThread::currentThreadId(), result, 10, true);
     body["invoice"] = json::value(result.toLocal8Bit().constData());
+}*/
+void answer_donateinvoice(const QJsonObject& request_json, json::value& response_body)
+{
+    long long amt_sat = atoll(request_json.value("amt_sat").toString().toUtf8().constData());
+    if(amt_sat<=0)
+    {
+        response_body["error"] = json::value("Need positive donation ammount");
+        return;
+    }
+
+    ResultPool::getInstance()->donateInvoiceRequest((intptr_t)QThread::currentThreadId(), amt_sat);
+    QString result;
+    ResultPool::getInstance()->waitForResult_invoice((intptr_t)QThread::currentThreadId(), result, 10, true);
+    response_body["invoice"] = json::value(result.toLocal8Bit().constData());
 }
 
-void handle_get(http_request request)
+void answer_networkinfo(const QJsonObject& request_json, json::value& response_body)
+{
+    NetworkSummary* network = PrefetcherThread::getInstance()->_currentNetwork;
+    if (network == nullptr)
+    {
+        response_body["error"] = json::value("Network info not ready");
+        return;
+    }
+
+    response_body["height"] = network->block_height;
+    response_body["nodes"] = network->nodes.size();
+    response_body["edges"] = network->edges.size();
+    response_body["capacity"] = network->total_capacity;
+    response_body["zbf_nodes"] = network->zbfNodes;
+    response_body["zbf_edges"] = network->zbfEdges;
+}
+
+void handle_get(const http_request& request)
 {
    TRACE("\nhandle GET\n");
    /*cout <<"c"<<request.relative_uri().path()<<endl;
    cout <<"b"<<request.relative_uri().query()<<endl;
    cout <<"a"<<request.relative_uri().resource().to_string() <<endl;*/
    QString origin=request.remote_address().c_str();
-   http_headers& headers = request.headers();
-   origin = headers["X-Forwarded-For"].c_str();
+   const http_headers& headers = request.headers();
+   origin = headers.find("X-Forwarded-For")->second.c_str();
    const QString resource(request.relative_uri().resource().to_string().c_str());
    RestThread::logger->log(QString("GET url=%1 thread=%2 source=%3")
                            .arg(resource)
@@ -282,11 +439,11 @@ void handle_get(http_request request)
       {
          body["passed"]=true;
       }
-   else if(resource.startsWith("/donate_invoice/"))
+   /*else if(resource.startsWith("/donate_invoice/"))
       {
        RestThread::GET_donateInvoice(resource, body);
        //request.reply(status_codes::OK);
-      }
+      }*/
    /*
     * TODO:
     * GET node_info(pubkey)
@@ -304,7 +461,7 @@ void handle_get(http_request request)
    request.reply(answer);
 }
 
-void handle_request(
+/*void handle_request(
    http_request request,
    function<void(json::value const &, json::value &)> action)
 {
@@ -334,9 +491,27 @@ void handle_request(
    display_json(answer, "S: ");
 
    request.reply(status_codes::OK, answer);
+}*/
+
+void handle_options(const http_request& request)
+{
+   TRACE("\nhandle OPTIONS\n");
+   http_response answer = http_response(status_codes::OK);
+   //Allow requests from a different IP address
+   answer.headers().add("Access-Control-Allow-Origin", "*");
+   answer.headers().add("Access-Control-Allow-Headers", "*");
+   auto body = json::value();
+   //answer.set_body(body);
+   request.reply(answer);
+
 }
 
-void handle_post(http_request request)
+void unknown_op(const QJsonObject&, json::value& response_body)
+{
+    response_body["error"] = json::value("Unknown request");
+};
+
+void handle_post(const http_request& request)
 {
    TRACE("\nhandle POST\n");
 
@@ -344,7 +519,47 @@ void handle_post(http_request request)
     * Receive analyse request from the online form
     */
 
-   handle_request(
+   using OpMap = QMap<QString, std::function<void(const QJsonObject&, json::value&)>>;
+   OpMap op_map;
+   op_map["donate_invoice"] = &answer_donateinvoice;
+   op_map["node_advice"] = &answer_nodeadvice;
+   op_map["node_info"] = &answer_nodeinfo;
+   op_map["network_info"] = &answer_networkinfo;
+
+   request.extract_json().then([request, op_map](web::json::value body)
+      {
+         auto request_body(body.serialize());
+         RestThread::logger->log(QString("POST json=%1 thread=%2")
+                               .arg(request_body.c_str())
+                               .arg((intptr_t)QThread::currentThreadId()).toUtf8());
+
+         http_response answer = http_response(status_codes::OK);
+         answer.headers().add("Access-Control-Allow-Origin", "*"); //Allow requests from a different IP address
+         auto answer_body = json::value();
+
+         QJsonDocument request_json_doc(QJsonDocument::fromJson(request_body.c_str()));
+         QJsonObject request_json_obj = request_json_doc.object();
+         QString op = request_json_obj.value("op").toString();
+
+         //analyze json and route the request to the propoer code
+         OpMap::const_iterator op_it = op_map.constFind(op);
+         if(op_it != op_map.constEnd())
+             (*op_it)(request_json_obj, answer_body);
+         else
+             unknown_op(request_json_obj, answer_body);
+
+          //request.reply(status_codes::OK, body);
+         RestThread::logger->log(QString("POST answer json=%1")
+                               .arg(answer_body.serialize().c_str()).toUtf8()
+                               /*.arg((intptr_t)QThread::currentThreadId()).toUtf8()*/);
+         answer.set_body(answer_body);
+         request.reply(answer);
+      });
+
+
+
+
+   /*handle_request(
       request,
       [](json::value const & jvalue, json::value & answer)
    {
@@ -365,17 +580,18 @@ void handle_post(http_request request)
             }
          }
       }
-   });
+   });*/
 }
 
-void handle_put(http_request request)
+void handle_put(const http_request& request)
 {
    TRACE("\nhandle PUT\n");
 
-   handle_request(
+   /*handle_request(
       request,
       [](json::value const & jvalue, json::value & answer)
    {
+      qWarning()<<jvalue.as_string().c_str();
       for (auto const & e : jvalue.as_object())
       {
          if (e.second.is_string())
@@ -397,14 +613,14 @@ void handle_put(http_request request)
             dictionary[key] = value;
          }
       }
-   });
+   });*/
 }
 
 void handle_del(http_request request)
 {
    TRACE("\nhandle DEL\n");
 
-   handle_request(
+   /*handle_request(
       request,
       [](json::value const & jvalue, json::value & answer)
    {
@@ -431,7 +647,7 @@ void handle_del(http_request request)
 
       for (auto const & key : keys)
          dictionary.erase(key);
-   });
+   });*/
 }
 
 RestThread::RestThread()
@@ -453,6 +669,7 @@ void RestThread::run()
 
     listener.support(methods::GET,  handle_get);
     listener.support(methods::POST, handle_post);
+    listener.support(methods::OPTIONS, handle_options);
     listener.support(methods::PUT,  handle_put);
     listener.support(methods::DEL,  handle_del);
 

@@ -250,6 +250,8 @@ void capacity_for_fee(const NetworkSummary& network, const Config& config,
      */
      const int side_for_fee = (testDirection == LiquidityDirection::OUTBOUND? destination_side : origin_side);
      const Edge::Side& fee_side = edge.side[side_for_fee];
+     if(fee_side.disabled)
+         return;
      if(fee_side.max_htlc_msat<width_sat*1000ULL)
          return;
      const int64_t edge_cost_msat = fee_side.base_fee_msat + (fee_side.feerate_msat*test_amt_sat)/1000;
@@ -314,13 +316,15 @@ void capacity_for_fee(const NetworkSummary& network, const Config& config,
           return;*/
       if(already_connected_ranks.contains(reached_node_rank))
           continue;
-      if(config.ignored_endpoint_nodes.contains(network.nodes[reached_node_rank].pubKey))
+      const Node& candidate_node = network.nodes[reached_node_rank];
+      if(network.ignored_endpoints.contains(reached_node_rank)/*config.ignored_endpoint_nodes.contains(candidate_node.pubKey)*/)
           continue;
       reached_nodes = base_reached_nodes;
       reached_edges = base_reached_edges;
-      browse_node(reached_node_rank, 0, test_amt_sat, -1);
+      int node_base_fee = testDirection == LiquidityDirection::OUTBOUND? candidate_node.median_fee_ppm : 0;
+      browse_node(reached_node_rank, node_base_fee, test_amt_sat, -1);
       int new_reached_edges_count = network.edges.size() - std::count(reached_edges.begin(), reached_edges.end(), ULONG_LONG_MAX);
-      int new_reached_nodes_count = network.nodes.size() - std::count(reached_nodes.begin(), reached_nodes.end(), ULONG_LONG_MAX);
+      //int new_reached_nodes_count = network.nodes.size() - std::count(reached_nodes.begin(), reached_nodes.end(), ULONG_LONG_MAX);
       /*qWarning() << network.nodes[node_rank].pubKey;
       qWarning() << new_reached_edges_count - reached_edges_count << "edges reached";
       qWarning() << new_reached_nodes_count - reached_nodes_count << "nodes reached";*/

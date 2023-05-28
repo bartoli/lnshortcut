@@ -1,11 +1,13 @@
+base_url = 'https://advisor.lnshortcut.ovh/';
+
 /*
-Get Json result, and on success, apply the passed function to use it
+Get Json result from REST request on sub-url, and on success, apply the passed function to use it
 */
 function getRestJson(path, applyFunc)
 {
   var result;
   try {
-    url = 'https://advisor.lnshortcut.ovh/' + path;
+    url = base_url + path;
     console.log('1', url);
     fetch(url)
     .then((response) => response.json())
@@ -20,15 +22,23 @@ function getRestJson(path, applyFunc)
   return result;
 }
 
-//Update block height in div vith id 'bh'
-function update_block_height()
+/* TOOLS for POST requests sendig params as json*/
+function getPostJson(json, applyFunc)
 {
-  function _apply(json)
-  {
-    const div = document.getElementById('bh');
-    div.textContent = "The Lightning Network at block height "+json.height+":";
-  }
-  getRestJson("block_height", _apply);  
+  fetch('https://advisor.lnshortcut.ovh/', {
+    method: 'POST',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*'
+    },
+    body: JSON.stringify(json),
+   })
+   .then((response) => response.json())
+   .then((json) => 
+   {  
+     applyFunc(json);
+   });  
 }
 
 //Update block height in div vith id 'nh'
@@ -36,11 +46,15 @@ function update_network_info()
 {
   function _apply(json)
   {
-    const div = document.getElementById('nh');
-    div.innerHTML = json.edges+" edges, "+json.nodes+" nodes, "+json.capacity/100000000+" BTC<br>"
+    const div_bh = document.getElementById('bh');
+    div_bh.textContent = "The Lightning Network at block height "+json.height+":";
+    const div_ni = document.getElementById('nh');
+    div_ni.innerHTML = json.edges+" edges, "+json.nodes+" nodes, "+json.capacity/100000000+" BTC<br>"
     +"#ZeroBaseFee: "+json.zbf_nodes+" nodes, "+json.zbf_edges+" edges";
   }
-  getRestJson("network_info", _apply); 
+  var json_query = {};
+  json_query['op'] = "network_info";
+  getPostJson(json_query, _apply); 
 }
 
 function node_stats()
@@ -70,7 +84,11 @@ function node_stats()
     }    
   }
   var pubkey = document.getElementById('pubkey').value;
-  getRestJson("node_info/"+pubkey, _apply); 
+  var json_query = {};
+  json_query['op'] = "node_info";
+  json_query['pubkey'] = pubkey;
+  getPostJson(json_query, _apply);
+  //getRestJson("node_info/"+pubkey, _apply); 
 }
 
 function node_advice()
@@ -88,14 +106,19 @@ function node_advice()
                     + "Hop3: "+json.node3+" brings "+json.cap3+" sats nearer.<br>";
     }
   }
+
   var pubkey = document.getElementById('pubkey').value;
   var capacity = document.getElementById('capacity').value;
-  var query = "node_advice/"+pubkey+"/"+capacity;
-  var zbfEdges = document.getElementById("zbfEdges").checked;
-  query += "/"+zbfEdges;
+  var zbfEdges = document.getElementById("zbfEdges").checked;  
   var zbfNodes = document.getElementById("zbfNodes").checked;
-  query += "/"+zbfNodes;
-  getRestJson(query, _apply); 
+
+  var query_json = {};
+  query_json['op'] = "node_advice";
+  query_json['pubkey'] = pubkey;
+  query_json['capacity'] = capacity;
+  query_json['zbfEdges'] = zbfEdges;
+  query_json['zbfNodes'] = zbfNodes;
+  getPostJson(query_json, _apply);
 }
 
 function get_donate_invoice()
@@ -106,6 +129,9 @@ function get_donate_invoice()
     div.innerHTML = "Invoice (2H validity): "+ json.invoice;
   }
   var amt_sats = document.getElementById('donate_amt').value;
+  var query_json = {};
+  query_json['op'] = 'donate_invoice';
+  query_json['amt_sat'] = amt_sats;
   var query = "donate_invoice/"+amt_sats;
-  getRestJson(query, _apply); 
+  getPostJson(query_json, _apply); 
 }

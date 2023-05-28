@@ -1,6 +1,7 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
+#include <QMultiMap>
 #include <QScopedPointer>
 #include <QSet>
 #include <QString>
@@ -22,9 +23,11 @@ public:
     QString lns_pubkey;
     QSet<QString> ignored_routing_nodes;
     //Nodes that shuld not be recommended as
-    QSet<QString> ignored_endpoint_nodes;
+    //QSet<QString> ignored_endpoint_nodes;
     //Ignore existing channels from node0 to those nodes (to simulate bes channel to close for example)
     QSet<QString> ignore_connected_nodes;
+    //Database of known minimum channel size, ordered by minimum channel size
+    QMultiMap<uint32_t, QString> min_chan_size_db;
     //Automatically choose, for the wanted channel capacity, the channels to close that make the best capacity reallocation
     quint64 cap_to_reclaim = 0;
 

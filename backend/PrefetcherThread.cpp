@@ -133,10 +133,12 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
       edge.side[0].base_fee_msat = atoi(policy1.toObject().value("fee_base_msat").toString().toUtf8().constData());
       edge.side[0].feerate_msat = atoi(policy1.toObject().value("fee_rate_milli_msat").toString().toUtf8().constData());
       edge.side[0].max_htlc_msat = atoll(policy1.toObject().value("max_htlc_msat").toString().toUtf8().constData());
+      edge.side[0].disabled = policy1.toObject().value("disabled").toBool();
       edge.side[1].node_rank= node2_rank;
       edge.side[1].base_fee_msat = atoi(policy2.toObject().value("fee_base_msat").toString().toUtf8().constData());
       edge.side[1].feerate_msat = atoi(policy2.toObject().value("fee_rate_milli_msat").toString().toUtf8().constData());
       edge.side[1].max_htlc_msat = atoll(policy2.toObject().value("max_htlc_msat").toString().toUtf8().constData());
+      edge.side[1].disabled = policy2.toObject().value("disabled").toBool();
       QString cap_val = edge_object.value("capacity").toString();
       edge.capacity = atoi(cap_val.toUtf8().constData());
 
@@ -164,6 +166,25 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
 
 
       ++rank;
+  }
+
+  //For each node, compute median edge (proportional) fee on the node side
+  for(size_t in=0, ncnt = network->nodes.size(); in < ncnt; ++in)
+  {
+      Node& node = network->nodes[in];
+      size_t ecnt = node.edges.size();
+      if(ecnt == 0)
+          continue;
+      std::vector<int> channel_fees(ecnt);
+      for(size_t ie=0;ie<ecnt; ++ie){
+          const Edge& edge = network->edges[node.edges[ie]];
+          int node_side = edge.side[0].node_rank == in? 0 : 1;
+          channel_fees[ie] = edge.side[node_side].feerate_msat;
+      }
+      std::sort(channel_fees.begin(), channel_fees.end());
+      //median rank : midle (rounded up if pair number)
+      int middle_rank = qRound((ecnt+0.5)/2);
+      node.median_fee_ppm = channel_fees[middle_rank];
   }
 
   qWarning()<<(QString("%1 Nodes / %2 channels / %3BTC")

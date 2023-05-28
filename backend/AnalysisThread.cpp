@@ -156,8 +156,8 @@ void AnalysisThread::analyseHops(const NetworkSummary& networkRef, const int& no
                 continue;*/
             if(cand_node.minChanSize>config.minCap)
                 continue;
-            if(config.ignored_endpoint_nodes.contains(cand_node.pubKey))
-                continue;
+            /*if(config.ignored_endpoint_nodes.contains(cand_node.pubKey))
+                continue;*/
             if(config.zbfEndpoints && !cand_node.isZbf)
                 continue;
 
@@ -217,8 +217,10 @@ void AnalysisThread::newWork(const QString& node0)
   if(node0_rank<0)
       return;
 
+  int test_amt_sat = 1000000;
+
   Config config;
-  config.minCap = 2500000;
+  config.minCap = test_amt_sat;
   //analyseHops(*network, node0_rank, config, result);
 
   //Contains the result of a CPF analysis
@@ -240,8 +242,8 @@ void AnalysisThread::newWork(const QString& node0)
   qWarning()<<"Filtered network has "<<filtered_network.nodes.size()<<" nodes and "<<filtered_network.edges.size()<<" edges";
 
   CFF_Result inbound_results, outbound_results;
-  capacity_for_fee(filtered_network, config, node0_rank, 500, 1000000, LiquidityDirection::OUTBOUND, outbound_results);
-  capacity_for_fee(filtered_network, config, node0_rank, 500, 1000000, LiquidityDirection::INBOUND, inbound_results);
+  capacity_for_fee(filtered_network, config, node0_rank, 500, test_amt_sat, LiquidityDirection::OUTBOUND, outbound_results);
+  capacity_for_fee(filtered_network, config, node0_rank, 500, test_amt_sat, LiquidityDirection::INBOUND, inbound_results);
 }
 
 AnalysisThread* AnalysisThread::getInstance()
