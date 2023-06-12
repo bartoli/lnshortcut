@@ -127,6 +127,15 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
       Node& node1 = network->nodes[node1_rank];
       Node& node2 = network->nodes[node2_rank];
 
+      //analyze zbf for the channel
+      auto is_zbf = [](const QJsonValue& policy) -> bool
+      {
+        auto fee = atoi(policy.toObject().value("fee_base_msat").toString().toUtf8().constData());
+        if(fee == 0)
+          return true;
+        return false;
+      };
+
       network->edges.push_back(Edge());
       Edge& edge = network->edges.back();
       edge.side[0].node_rank=node1_rank;
@@ -134,11 +143,13 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
       edge.side[0].feerate_msat = atoi(policy1.toObject().value("fee_rate_milli_msat").toString().toUtf8().constData());
       edge.side[0].max_htlc_msat = atoll(policy1.toObject().value("max_htlc_msat").toString().toUtf8().constData());
       edge.side[0].disabled = policy1.toObject().value("disabled").toBool();
+      edge.side[0].isZbf = is_zbf(policy1);
       edge.side[1].node_rank= node2_rank;
       edge.side[1].base_fee_msat = atoi(policy2.toObject().value("fee_base_msat").toString().toUtf8().constData());
       edge.side[1].feerate_msat = atoi(policy2.toObject().value("fee_rate_milli_msat").toString().toUtf8().constData());
       edge.side[1].max_htlc_msat = atoll(policy2.toObject().value("max_htlc_msat").toString().toUtf8().constData());
       edge.side[1].disabled = policy2.toObject().value("disabled").toBool();
+      edge.side[1].isZbf = is_zbf(policy2);
       QString cap_val = edge_object.value("capacity").toString();
       edge.capacity = atoi(cap_val.toUtf8().constData());
 
@@ -148,21 +159,10 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
       node1.minChanSize = std::min(node1.minChanSize, edge.capacity);
       node2.minChanSize = std::min(node2.minChanSize, edge.capacity);
 
-
-      //analyze zbf for the channel
-      auto is_zbf = [](const QJsonValue& policy) -> bool
-      {
-        auto fee = atoi(policy.toObject().value("fee_base_msat").toString().toUtf8().constData());
-        if(fee == 0)
-          return true;
-        return false;
-      };
       if(node1.isZbf && !is_zbf(policy1))
           node1.isZbf = false;
       if(node2.isZbf && !is_zbf(policy2))
           node2.isZbf = false;
-      if(!(is_zbf(policy1) && is_zbf(policy2)))
-          edge.isZbf = false;
 
 
       ++rank;
@@ -201,7 +201,7 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
   }
   for (const Edge& edge : network->edges)
   {
-      if(edge.isZbf)
+      if(edge.side[0].isZbf && edge.side[1].isZbf)
           ++network->zbfEdges;
   }
 

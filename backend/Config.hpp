@@ -8,6 +8,7 @@
 
 class Node;
 class Edge;
+class NetworkSummary;
 
 /*
  * Global config
@@ -40,12 +41,17 @@ public:
     bool zbfEndpoints = true;
     //Analyze ony zbf paths
     bool zbfPaths = true;
+    //clearnet/tor endpoints?
     bool clearnetNodes = true;
     bool torNodes=true;
+    //analyse only clearnet/tor routes? (edges where both sides are on tor/clearnet)
+    bool torEdges = true;
+    bool clearnetEdges = true;
 
 
-    bool excludesNode(const Node& node) const;
-    bool excludesEdge(const Edge& node) const;
+    bool excludesNodeForRouting(const Node& node) const;
+    bool excludesNodeAsEndPoint(const Node& node) const;
+    bool excludesEdge(const NetworkSummary& network, const Edge& node) const;
 
 };
 

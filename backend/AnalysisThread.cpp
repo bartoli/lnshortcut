@@ -217,27 +217,14 @@ void AnalysisThread::newWork(const QString& node0)
   if(node0_rank<0)
       return;
 
-  int test_amt_sat = 1000000;
+  int test_amt_sat = 1250000;
 
   Config config;
   config.minCap = test_amt_sat;
   //analyseHops(*network, node0_rank, config, result);
 
-  //Contains the result of a CPF analysis
-  //-direction that needs the most liquidity
-  //-current reachable edges in that direction
-  struct CPFResult
-  {
-    LiquidityDirection worstDirection;
-    //candidate for 'max new reachable edges in OUTBOUND direction'
-    //candidate for 'max new reachable edges in INBOUND direction'
-    //candidate for 'max new reachable edges total'
-    //candidate fof 'max new reachable edges with balanced inbound/outbound'
-    //same as previous fours, but not acounting for aleasdy reached edges
-    //browse data for the candidates, indexed by candidate rank
-  };
-
-  const NetworkSummary filtered_network = network->filter(config, node0_rank);
+  //filter twice to remove nodes that have no edges after edges filtering
+  const NetworkSummary filtered_network = network->filter(config, node0_rank).filter(config, node0_rank);
   node0_rank = filtered_network.node_index.value(network->nodes[node0_rank].pubKey);
   qWarning()<<"Filtered network has "<<filtered_network.nodes.size()<<" nodes and "<<filtered_network.edges.size()<<" edges";
 

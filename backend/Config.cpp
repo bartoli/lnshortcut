@@ -40,25 +40,48 @@ Config::Config()
     candidates_depth = 1;
 }
 
-bool Config::excludesNode(const Node& node) const
+bool Config::excludesNodeForRouting(const Node& node) const
 {
-  const Config& cfg(*this);
-
-  bool reachable_on_clearnet = node.clearnet && cfg.clearnetNodes;
-  bool reachable_on_tor = node.tor && cfg.torNodes;
-  if (!(reachable_on_clearnet || reachable_on_tor))
-          return true;
+  if(node.edges.empty())
+      return true;
 
   return false;
 };
 
-bool Config::excludesEdge(const Edge& edge) const
+bool Config::excludesNodeAsEndPoint(const Node& node) const
+{
+    const Config& cfg(*this);
+
+    bool reachable_on_clearnet = node.clearnet && cfg.clearnetNodes;
+    bool reachable_on_tor = node.tor && cfg.torNodes;
+    if (!(reachable_on_clearnet || reachable_on_tor))
+            return true;
+
+    if(cfg.zbfEndpoints && ! node.isZbf)
+         return true;
+
+    return false;
+}
+
+bool Config::excludesEdge(const NetworkSummary& network, const Edge& edge) const
 {
   const Config& cfg(*this);
 
   if(cfg.minCap > edge.capacity)
       return true;
   //biggest of max_htlc_msat of both sides should also be greater than tested cpacity
+
+  //zbf edges filtering : not filtered here, depends on the side. We can only prefilter the ones that are not zbf in both sides
+  if(cfg.zbfPaths && !edge.side[0].isZbf && !edge.side[1].isZbf)
+      return true;
+
+  const Node& node0 = network.nodes[edge.side[0].node_rank];
+  const Node& node1 = network.nodes[edge.side[1].node_rank];
+  //Filter edges not on clearnet?
+  bool reachable_on_clearnet = (cfg.clearnetEdges && node0.clearnet && node1.clearnet);
+  bool reachable_on_tor = (cfg.torEdges && node0.tor && node1.tor);
+  if(!(reachable_on_clearnet||reachable_on_tor))
+      return true;
 
   return false;
 }

@@ -1,41 +1,47 @@
 <script type="text/javascript" src="util.js"></script>
-<table>
-    <tr><td colspan="4" align="center"><h1>LN Shortcut</h1><h2>02c521e5e73e40bad13fb589635755f674d6a159fd9f7b248d286e38c3a46f8683</h2></td></tr>
-    <tr><td><a href="/index.html">Home</a></td><td>Channel advisor</td><td>Node Rating</td>
-    <td><a href="https://discord.gg/gPaqEafvAF">Contact us (Discord).</a></td></tr>
-    <tr><td colspan="4">
-      Open a channel to us to benefit from this connectedness.<br>
-      <br>
-      Use this page to obtain statistics on the Lightning network and your node.<br>
-      You can also use our channel advisor to optimize the use of your liquidity for a well connected network.<br>
-<br>
-We try to link to the 'furthest' nodes on the Lightning Network, making everyone nearer from another.<br><br>
+<table border="1">
+    <tr><td align="center" colspan="2"><h1>LN Shortcut</h1><h2>02c521e5e73e40bad13fb589635755f674d6a159fd9f7b248d286e38c3a46f8683</h2></td></tr>
+    <tr><td><a href="/index.html">Home</a></td><td><a href="https://discord.gg/gPaqEafvAF">Contact us (Discord).</a></td></tr>
+    <tr><td colspan="1">
+      <h3>Channel Advisor</h3>
 <div id="bh"></div>
 <div id="nh"></div><script type="text/javascript">update_network_info();</script>
 <br>
 <div id="nodeAnalysisForm">
     <form>
-      Node pubkey<input type="text" value="02c521e5e73e40bad13fb589635755f674d6a159fd9f7b248d286e38c3a46f8683" id="pubkey" required="required" title = "Public key of your Lightning node"><input type="button" value="Get node statistics" onclick="node_stats()">
+      Your node pubkey<input type="text" value="02c521e5e73e40bad13fb589635755f674d6a159fd9f7b248d286e38c3a46f8683" id="pubkey" required="required" title = "Public key of your Lightning node"><input type="button" value="Get node statistics" onclick="node_stats()">
     </form>
 </div>
-<div id="analysisResult"></div>
 <div id="nodeAdviceForm">
     <form>
-      Capacity<input type="number" min=1 minlength=66 maxlength=66 value=1000000 id="capacity" required="required" title="Capacity to open, in satoshis. The anaysis will only consider channels of this size to suggest nodes that are poorly connected with this capacity"><br>
-      <input type="checkbox" id="zbfEdges">Browse only #zerobasefee edges<br>
-      <input type="checkbox" id="zbfNodes">Suggest only #zerobasefee nodes<br>
+      Channel capacity to open <input type="number" min=100000 minlength=66 maxlength=66 value=1000000 id="capacity" required="required" title="Capacity to open, in satoshis. The anaysis will only consider channels of this size to suggest nodes that are poorly connected with this capacity"> sats.<br>
+      <br>
+      Test transaction of <input type="number" id="test_amt_sat" value="1000000" min="1000" max="16000000">sats,<br>
+      for a maximum fee of <input type="number" id="max_fee_sat" value="500" min="0"> sats.<br>
+      <br>
+      Route filtering<br>
+      <input type="checkbox" id="zbfEdges" checked>Browse only #zerobasefee edges<br>
+      <input type="checkbox" id="clearnetEdges" checked>Browse clearnet edges<br>
+      <input type="checkbox" id="torEdges">Browse tor edges<br>
+      <br>
+      Candidates filtering<br>
+      <input type="checkbox" id="zbfNodes" checked>Suggest only #zerobasefee nodes<br>
+      <input type="checkbox" id="clearnetNodes" checked>Suggest clearnet nodes<br>
+      <input type="checkbox" id="torNodes">Suggest tor nodes<br>
+      <input type="checkbox" id="useMinChanSizeDb">Use known min chan size database<br>
+      <input type="checkbox" id="guessMinChanSize">Excludes nodes which might not accept this channel size<br>
+      <input type="number" id="candidateMasMedianFee"></input> ppm for max target node median fee.<br>
+      <br>
       <input type="button" value="Get channel advice" onclick="node_advice()">
     </form>
 </div>
-<div id="channelAdvice"></div>
+</td>
 
-<h3>Coming soon, development is in progress</h3>
-
-
+<td colspan="2"><div id=analysisResult></div></td>
+</tr>
+<tr><td colspan="2">
+  <form>Donate<input type=number min=1 value=43 id="donate_amt">sats. <input type="button" value="Get invoice" onclick="get_donate_invoice();"><br><div id="donateInvoiceDiv" style="display:inline-block;"></div></form>
 </td></tr>
-<tr><td>
-  <form>Donate<input type=number min=1 value=43 id="donate_amt">sats. <input type="button" value="Get invoice" onclick="get_donate_invoice();"><div id="donateInvoiceDiv"></div></form>
-</td></tr>
-<tr><td><a href="troubleshoot.html">Troubleshooting</a></td></tr>
+<tr><td colspan="2"><a href="troubleshoot.html">Troubleshooting</a></td></tr>
 </table>
 </script>

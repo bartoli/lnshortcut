@@ -38,7 +38,6 @@ public:
   //Node ranks. First is the smallest, not the initiator
   uint32_t capacity;
   int capacity_counted=-1;
-  bool isZbf=true;
 
   typedef struct
   {
@@ -47,6 +46,7 @@ public:
     int feerate_msat = 0;
     uint64_t max_htlc_msat = 0;
     bool disabled = false;
+    bool isZbf = true;
   }Side;
   Side side[2];
 };

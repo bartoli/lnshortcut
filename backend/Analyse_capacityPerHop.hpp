@@ -45,10 +45,16 @@ typedef enum
 
 typedef struct
 {
-    int new_reached_edges;
-    int new_reached_nodes;
-}CFF_NodeResult;
-typedef QMap<int,CFF_NodeResult> CFF_Result;
+    typedef enum{
+      REFERENCE,
+      MOST_NEW_EDGES,
+      MOST_NEW_NODES,
+      COUNT
+    }RankingCategory;
+    size_t best_candidate_rank[RankingCategory::COUNT];
+    int new_reached_edges[RankingCategory::COUNT];
+    int new_reached_nodes[RankingCategory::COUNT];
+}CFF_Result;
 
 void capacity_for_fee(const NetworkSummary& network, const Config& config,
                        int node0_rank, uint64_t max_fee_sat, uint64_t test_amt_sat,

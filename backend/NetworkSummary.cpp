@@ -28,7 +28,7 @@ NetworkSummary NetworkSummary::filter(const Config& cfg, int node0_rank) const
         if(in == node0_rank)
             continue;
         const Node& node = ref.nodes.at(in);
-        if(cfg.excludesNode(node))
+        if(cfg.excludesNodeForRouting(node))
         {
             //First exclusion of edges that are connected to nodes that are excluded
             kept_nodes[in] = false;
@@ -46,7 +46,7 @@ NetworkSummary NetworkSummary::filter(const Config& cfg, int node0_rank) const
     {
         if(!kept_edges.at(ie))
             continue;
-        if(cfg.excludesEdge(ref.edges.at(ie)))
+        if(cfg.excludesEdge(ref, ref.edges.at(ie)))
         {
             kept_edges.at(ie) = false;
             e_cnt2--;

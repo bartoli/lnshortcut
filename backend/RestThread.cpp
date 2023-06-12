@@ -1,4 +1,5 @@
 #include <RestThread.hpp>
+#include <Analyse_capacityPerHop.hpp>
 
 
 #include "cpprest/json.h"
@@ -207,8 +208,8 @@ void answer_nodeadvice(const QJsonObject& request_json, json::value& response_bo
       response_body["error"] = json::value("Network graph informaton not available, please retry later.");
       return;
   }
-  int node_rank = network->node_index.value(pubkey,-1);
-  if(node_rank < 0)
+  int node0_rank = network->node_index.value(pubkey,-1);
+  if(node0_rank < 0)
   {
       response_body["error"] = json::value("Unknown node public key");
       return;
@@ -216,16 +217,16 @@ void answer_nodeadvice(const QJsonObject& request_json, json::value& response_bo
   //Is it a lns peer? Is capacity not more than capacity connected to lns?
   {
       //int lns_capacity = 0;
-      const Node& node = network->nodes[node_rank];
+      /*const Node& node0 = network->nodes[node0_rank];
       uint32_t max_cap = 0;
-      for(const int edge_rank : node.edges)
+      for(const int edge_rank : node0.edges)
       {
           const Edge& edge = network->edges[edge_rank];
           max_cap = std::max(max_cap, edge.capacity);
-          /*int other_node_rank = edge.side[0].node_rank == node_rank? edge.side[1].node_rank : edge.side[0].node_rank;
+          int other_node_rank = edge.side[0].node_rank == node_rank? edge.side[1].node_rank : edge.side[0].node_rank;
           if(other_node_rank == network->lns_noderank)
-              lns_capacity += edge.capacity;*/
-      }
+              lns_capacity += edge.capacity;
+      }*/
       /*if(node_rank != network->lns_noderank && lns_capacity<cap)
       {
           body["error"] = json::value("Can't advise for channels with more capacity than the sum of the channels connected to LNSHortcut");
@@ -238,22 +239,83 @@ void answer_nodeadvice(const QJsonObject& request_json, json::value& response_bo
       // For lns node, it can happen when we analyse for a bigger capacity than the existing channels.
       // There are no nodes to reach with at least that capacity, so we are looking at empty lists of reached nodes at any hop level
       // -> estimate next channel as if it is the masx size of current channels
-      capacity = std::min(capacity, max_cap);
+      //capacity = std::min(capacity, max_cap);
   }
+
   Config config;
   config.minCap = capacity;
 
+  json::value results;
 
-  Result result;
+  //Basic node stats
+  json::value stats_output;
+  answer_nodeinfo(request_json, stats_output);
+  stats_output["type"] = json::value("node_info");
+  stats_output["label"] = json::value("Node statistics");
+  results[0] = stats_output;
 
+  /*Result result;
   AnalysisThread::analyseHops(*network, node_rank, config, result);
-
   response_body["node0"] = json::value(pubkey.toUtf8().constData());
   response_body["node2"] = json::value(network->nodes[result.node2].pubKey.toUtf8().constData());
   response_body["node3"] = json::value(network->nodes[result.node3].pubKey.toUtf8().constData());
   response_body["cap0"] = capacity;
   response_body["cap2"] = result.cap2;
-  response_body["cap3"] = result.cap3;
+  response_body["cap3"] = result.cap3;*/
+
+  int test_amt_sat = atoll(request_json.value("test_amt_sat").toString().toUtf8().constData());
+  //by defualt, test transaction of half wanted channel capacity
+  if(test_amt_sat <=0)
+      test_amt_sat = capacity/2;
+
+  int max_fee_sat = atoll(request_json.value("max_fee_sat").toString().toUtf8().constData());
+
+  config.zbfPaths = request_json.value("zbfEdges").toBool();
+  config.zbfEndpoints = request_json.value("zbfNodes").toBool();
+
+  config.clearnetNodes = request_json.value("clearnetNodes").toBool();
+  config.torNodes = request_json.value("torNodes").toBool();
+  config.clearnetEdges = request_json.value("clearnetEdges").toBool();
+  config.torEdges = request_json.value("torEdges").toBool();
+  //Need at least one, connect to clearnet only by default
+  if (!(config.torNodes || config.clearnetNodes))
+      config.clearnetNodes = true;
+
+
+  config.minCap = test_amt_sat;
+  //analyseHops(*network, node0_rank, config, result);
+
+  const NetworkSummary filtered_network = network->filter(config, node0_rank);
+  node0_rank = filtered_network.node_index.value(network->nodes[node0_rank].pubKey);
+  qWarning()<<"Filtered network has "<<filtered_network.nodes.size()<<" nodes and "<<filtered_network.edges.size()<<" edges";
+  response_body["workNodes"] = filtered_network.nodes.size();
+  response_body["workEdges"] = filtered_network.edges.size();
+
+
+  CFF_Result inbound_results, outbound_results;
+  /*capacity_for_fee(filtered_network, config, node0_rank, max_fee_sat, test_amt_sat, LiquidityDirection::OUTBOUND, outbound_results);
+  capacity_for_fee(filtered_network, config, node0_rank, max_fee_sat, test_amt_sat, LiquidityDirection::INBOUND, inbound_results);*/
+  std::thread t2([&](){capacity_for_fee(filtered_network, config, node0_rank, max_fee_sat, test_amt_sat, LiquidityDirection::OUTBOUND, outbound_results);;});
+  std::thread t3([&](){capacity_for_fee(filtered_network, config, node0_rank, max_fee_sat, test_amt_sat, LiquidityDirection::INBOUND, inbound_results);;});
+  t2.join();
+  t3.join();
+
+  response_body["outboundReachedNodes"] = outbound_results.new_reached_nodes[CFF_Result::RankingCategory::REFERENCE];
+  response_body["inboundReachedNodes"] = inbound_results.new_reached_nodes[CFF_Result::RankingCategory::REFERENCE];
+  response_body["outboundReachedEdges"] = outbound_results.new_reached_edges[CFF_Result::RankingCategory::REFERENCE];
+  response_body["inboundReachedEdges"] = inbound_results.new_reached_edges[CFF_Result::RankingCategory::REFERENCE];
+  response_body["inBoundBestCandidateForEdges"] = json::value(filtered_network.nodes[inbound_results.best_candidate_rank[CFF_Result::RankingCategory::MOST_NEW_EDGES]].pubKey.toUtf8().constData());
+  response_body["inBoundBestCandidateForNodes"] = json::value(filtered_network.nodes[inbound_results.best_candidate_rank[CFF_Result::RankingCategory::MOST_NEW_NODES]].pubKey.toUtf8().constData());
+  response_body["outBoundBestCandidateForEdges"] = json::value(filtered_network.nodes[outbound_results.best_candidate_rank[CFF_Result::RankingCategory::MOST_NEW_EDGES]].pubKey.toUtf8().constData());
+  response_body["outBoundBestCandidateForNodes"] = json::value(filtered_network.nodes[outbound_results.best_candidate_rank[CFF_Result::RankingCategory::MOST_NEW_NODES]].pubKey.toUtf8().constData());
+  response_body["inBoundNewReachedEdgesForEdges"] = inbound_results.new_reached_edges[CFF_Result::RankingCategory::MOST_NEW_EDGES];
+  response_body["inBoundNewReachedEdgesForNodes"] = inbound_results.new_reached_edges[CFF_Result::RankingCategory::MOST_NEW_NODES];
+  response_body["outBoundNewReachedEdgesForEdges"] = outbound_results.new_reached_edges[CFF_Result::RankingCategory::MOST_NEW_EDGES];
+  response_body["outBoundNewReachedEdgesForNodes"] = outbound_results.new_reached_edges[CFF_Result::RankingCategory::MOST_NEW_NODES];
+  response_body["inBoundNewReachedNodesForEdges"] = inbound_results.new_reached_nodes[CFF_Result::RankingCategory::MOST_NEW_EDGES];
+  response_body["inBoundNewReachedNodesForNodes"] = inbound_results.new_reached_nodes[CFF_Result::RankingCategory::MOST_NEW_NODES];
+  response_body["outBoundNewReachedNodesForEdges"] = outbound_results.new_reached_nodes[CFF_Result::RankingCategory::MOST_NEW_EDGES];
+  response_body["outBoundNewReachedNodesForNodes"] = outbound_results.new_reached_nodes[CFF_Result::RankingCategory::MOST_NEW_NODES];
 }
 
 void GET_nodeadvice(const QString& resource, json::value& body)
