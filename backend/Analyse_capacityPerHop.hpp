@@ -46,14 +46,16 @@ typedef enum
 typedef struct
 {
     typedef enum{
-      REFERENCE,
-      MOST_NEW_EDGES,
-      MOST_NEW_NODES,
-      COUNT
+      REFERENCE=0,       //Result with existing channels
+      MOST_NEW_EDGES=1,  //Result for node that brings the most new reacable edges
+      MOST_NEW_NODES=2,  //result for the node that brings the most new reachable nodes
+      BEST_MEDIAN_COST=3,//result for the node that brinds he smallest median fee for original reachable nodes
+      COUNT=4
     }RankingCategory;
     size_t best_candidate_rank[RankingCategory::COUNT];
     int new_reached_edges[RankingCategory::COUNT];
     int new_reached_nodes[RankingCategory::COUNT];
+    int median_cost_for_original_reach[RankingCategory::COUNT];
 }CFF_Result;
 
 void capacity_for_fee(const NetworkSummary& network, const Config& config,

@@ -35,7 +35,11 @@ public:
     //Hop level for candidates;
     int candidates_depth;
 
-    qint64 minCap;
+    //Capacity filtering
+    qint64 minRoutingCap; //minimum capacity a channel must be able to route to be browser
+    qint64 minEndpointCap; //a potential candidate must have at least 2 channels of this min capacity to be considered as an intersint grouting peer
+    //TODO : for endpoouints, the two channel of min cap must be also two channels that have each the min routing capacity in both direction
+
     //ZeroBaseFee options
     //Connect only to nodes that respect zbf
     bool zbfEndpoints = true;
@@ -50,7 +54,7 @@ public:
 
 
     bool excludesNodeForRouting(const Node& node) const;
-    bool excludesNodeAsEndPoint(const Node& node) const;
+    bool excludesNodeAsEndPoint(const Node& node, const NetworkSummary& network) const;
     bool excludesEdge(const NetworkSummary& network, const Edge& node) const;
 
 };

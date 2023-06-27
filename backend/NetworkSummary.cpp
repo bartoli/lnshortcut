@@ -94,7 +94,8 @@ NetworkSummary NetworkSummary::filter(const Config& cfg, int node0_rank) const
         const Node& node0 = ref.nodes.at(in);
         auto new_rank = new_node_ranks.at(in);
         Node& node2 = out.nodes.at(new_rank);
-        out.node_index[node0.pubKey] = new_rank;
+        out.pubkey_index[node0.pubKey] = new_rank;
+        out.alias_index.insertMulti(node0.alias, new_rank);
         for(int ie=0, cnt = node0.edges.size(); ie<cnt; ++ie)
         {
             int edge_rank0 = node0.edges.at(ie);
@@ -114,10 +115,10 @@ void NetworkSummary::updateIgnoredEndpoints(const Config& cfg)
 {
   ignored_endpoints.clear();
   //First fill based on known node min channel size VS config wanted channel size
-  auto it( cfg.min_chan_size_db.lowerBound(cfg.minCap) );
+  auto it( cfg.min_chan_size_db.lowerBound(cfg.minRoutingCap) );
   while( it != cfg.min_chan_size_db.end())
   {
-    ignored_endpoints.insert(node_index[it.value()]);
+    ignored_endpoints.insert(pubkey_index[it.value()]);
     ++it;
   }
 }

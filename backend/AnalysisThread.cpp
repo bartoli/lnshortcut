@@ -154,7 +154,7 @@ void AnalysisThread::analyseHops(const NetworkSummary& networkRef, const int& no
 
             /*if(!net_ref.nodes[node_rank].clearnet)
                 continue;*/
-            if(cand_node.minChanSize>config.minCap)
+            if(cand_node.minChanSize>config.minRoutingCap)
                 continue;
             /*if(config.ignored_endpoint_nodes.contains(cand_node.pubKey))
                 continue;*/
@@ -213,19 +213,19 @@ void AnalysisThread::newWork(const QString& node0)
    if(!network)
      return;
   //Result result;
-  int node0_rank = network->node_index.value(node0,-1);
+  int node0_rank = network->pubkey_index.value(node0,-1);
   if(node0_rank<0)
       return;
 
   int test_amt_sat = 1250000;
 
   Config config;
-  config.minCap = test_amt_sat;
+  config.minRoutingCap = test_amt_sat;
   //analyseHops(*network, node0_rank, config, result);
 
   //filter twice to remove nodes that have no edges after edges filtering
   const NetworkSummary filtered_network = network->filter(config, node0_rank).filter(config, node0_rank);
-  node0_rank = filtered_network.node_index.value(network->nodes[node0_rank].pubKey);
+  node0_rank = filtered_network.pubkey_index.value(network->nodes[node0_rank].pubKey);
   qWarning()<<"Filtered network has "<<filtered_network.nodes.size()<<" nodes and "<<filtered_network.edges.size()<<" edges";
 
   CFF_Result inbound_results, outbound_results;

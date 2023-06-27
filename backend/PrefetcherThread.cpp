@@ -88,7 +88,8 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
       node.clearnet = clearnet;
       node.tor = tor;
       node.alias = node_object.value("alias").toString();
-      network->node_index[node.pubKey] = rank;
+      network->pubkey_index[node.pubKey] = rank;
+      network->alias_index.insertMulti(node.alias, rank);
       ++rank;
   }
 
@@ -122,8 +123,8 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
       if(!(valid_policy(policy1) || valid_policy(policy2)))
           continue;
 
-      qint32 node1_rank = network->node_index[pubkey1];
-      qint32 node2_rank = network->node_index[pubkey2];
+      qint32 node1_rank = network->pubkey_index[pubkey1];
+      qint32 node2_rank = network->pubkey_index[pubkey2];
       Node& node1 = network->nodes[node1_rank];
       Node& node2 = network->nodes[node2_rank];
 
@@ -192,7 +193,7 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
                .arg(network->edges.size())
                .arg(network->total_capacity/100000000.0));
 
-  network->lns_noderank = network->node_index.value(config.lns_pubkey, -1);
+  network->lns_noderank = network->pubkey_index.value(config.lns_pubkey, -1);
 
   for (const Node& node : network->nodes)
   {

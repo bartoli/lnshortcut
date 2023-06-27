@@ -73,7 +73,9 @@ public:
     //same for nodes
     std::vector<Node> nodes;
     //node rank from pubkey
-    QMap<QString, qint32> node_index;
+    QMap<QString, qint32> pubkey_index;
+    //node rank from alias
+    QMultiMap<QString, qint32> alias_index;
 
     //Stats about the network as a whole
     uint64_t total_capacity;

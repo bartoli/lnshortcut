@@ -48,7 +48,7 @@ bool Config::excludesNodeForRouting(const Node& node) const
   return false;
 };
 
-bool Config::excludesNodeAsEndPoint(const Node& node) const
+bool Config::excludesNodeAsEndPoint(const Node& node, const NetworkSummary& network) const
 {
     const Config& cfg(*this);
 
@@ -60,6 +60,19 @@ bool Config::excludesNodeAsEndPoint(const Node& node) const
     if(cfg.zbfEndpoints && ! node.isZbf)
          return true;
 
+    //node must have at least two channels of at least wanted endpoint capcity
+    int channels_with_wanted_final_cap = 0;
+    for(int ie=0, ecnt = node.edges.size(); ie<ecnt; ++ie)
+    {
+        const Edge& edge = network.edges[node.edges[ie]];
+        if(edge.capacity >= cfg.minEndpointCap)
+            channels_with_wanted_final_cap++;
+        if(channels_with_wanted_final_cap>=2)
+            break;
+    }
+    if(channels_with_wanted_final_cap>2)
+        return true;
+
     return false;
 }
 
@@ -67,7 +80,7 @@ bool Config::excludesEdge(const NetworkSummary& network, const Edge& edge) const
 {
   const Config& cfg(*this);
 
-  if(cfg.minCap > edge.capacity)
+  if(cfg.minRoutingCap > edge.capacity)
       return true;
   //biggest of max_htlc_msat of both sides should also be greater than tested cpacity
 

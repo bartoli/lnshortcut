@@ -90,7 +90,7 @@ void answer_nodeinfo(const QJsonObject& request_json, json::value& response_body
     int o_n_edges=0;
     uint64_t o_cap_min = ULONG_MAX, o_cap_max=0, o_cap_avg=0, o_cap_ttl=0;
     int o_peers=0;
-    int node_rank = network->node_index.value(node_pubkey, -1);
+    int node_rank = network->pubkey_index.value(node_pubkey, -1);
     if(node_rank<0)
     {
         response_body["error"] = json::value(QString("Unknown node public key %1.").arg(node_pubkey).toUtf8().constData());
@@ -145,7 +145,7 @@ void GET_nodeinfo(const QString& resource, json::value& body)
     int o_n_edges=0;
     uint64_t o_cap_min = ULONG_MAX, o_cap_max=0, o_cap_avg=0, o_cap_ttl=0;
     int o_peers=0;
-    int node_rank = network->node_index.value(node_pubkey, -1);
+    int node_rank = network->pubkey_index.value(node_pubkey, -1);
     if(node_rank<0)
     {
         body["error"] = json::value(QString("Unknown node public key %1.").arg(node_pubkey).toUtf8().constData());
@@ -192,8 +192,6 @@ void answer_nodeadvice(const QJsonObject& request_json, json::value& response_bo
   qWarning() << request_json;
   QString pubkey = request_json.value("pubkey").toString();
   uint32_t capacity = atoll(request_json.value("capacity").toString().toUtf8().constData());
-  bool zbf_edges = request_json.value("zbfEdges").toBool();
-  bool zbf_nodes = request_json.value("zbfNodes").toBool();
 
   if(capacity<=0)
   {
@@ -208,7 +206,9 @@ void answer_nodeadvice(const QJsonObject& request_json, json::value& response_bo
       response_body["error"] = json::value("Network graph informaton not available, please retry later.");
       return;
   }
-  int node0_rank = network->node_index.value(pubkey,-1);
+  int node0_rank = network->pubkey_index.value(pubkey,-1);
+  if(node0_rank < 0)
+      node0_rank = network->alias_index.value(pubkey, -1);
   if(node0_rank < 0)
   {
       response_body["error"] = json::value("Unknown node public key");
@@ -243,7 +243,7 @@ void answer_nodeadvice(const QJsonObject& request_json, json::value& response_bo
   }
 
   Config config;
-  config.minCap = capacity;
+  config.minRoutingCap = capacity;
 
   json::value results;
 
@@ -282,11 +282,12 @@ void answer_nodeadvice(const QJsonObject& request_json, json::value& response_bo
       config.clearnetNodes = true;
 
 
-  config.minCap = test_amt_sat;
+  config.minRoutingCap = test_amt_sat;
+  config.minEndpointCap = capacity;
   //analyseHops(*network, node0_rank, config, result);
 
   const NetworkSummary filtered_network = network->filter(config, node0_rank);
-  node0_rank = filtered_network.node_index.value(network->nodes[node0_rank].pubKey);
+  node0_rank = filtered_network.pubkey_index.value(network->nodes[node0_rank].pubKey);
   qWarning()<<"Filtered network has "<<filtered_network.nodes.size()<<" nodes and "<<filtered_network.edges.size()<<" edges";
   response_body["workNodes"] = filtered_network.nodes.size();
   response_body["workEdges"] = filtered_network.edges.size();
@@ -316,6 +317,8 @@ void answer_nodeadvice(const QJsonObject& request_json, json::value& response_bo
   response_body["inBoundNewReachedNodesForNodes"] = inbound_results.new_reached_nodes[CFF_Result::RankingCategory::MOST_NEW_NODES];
   response_body["outBoundNewReachedNodesForEdges"] = outbound_results.new_reached_nodes[CFF_Result::RankingCategory::MOST_NEW_EDGES];
   response_body["outBoundNewReachedNodesForNodes"] = outbound_results.new_reached_nodes[CFF_Result::RankingCategory::MOST_NEW_NODES];
+  response_body["outboundMedianCost"] = outbound_results.median_cost_for_original_reach[CFF_Result::RankingCategory::REFERENCE];
+  response_body["inboundMedianCost"] = inbound_results.median_cost_for_original_reach[CFF_Result::RankingCategory::REFERENCE];
 }
 
 void GET_nodeadvice(const QString& resource, json::value& body)
@@ -348,7 +351,7 @@ void GET_nodeadvice(const QString& resource, json::value& body)
         body["error"] = json::value("Network graph informaton not available, please retry later.");
         return;
     }
-    int node_rank = network->node_index.value(node_pubkey,-1);
+    int node_rank = network->pubkey_index.value(node_pubkey,-1);
     if(node_rank < 0)
     {
         body["error"] = json::value("Unknown node public key");
@@ -381,7 +384,7 @@ void GET_nodeadvice(const QString& resource, json::value& body)
         // -> estimate next channel as if it is the masx size of current channels
         cap = std::min(cap, max_cap);
     }
-    config.minCap = cap;
+    config.minRoutingCap = cap;
 
 
     Result result;

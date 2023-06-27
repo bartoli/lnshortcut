@@ -7,6 +7,8 @@
 #include <QDebug>
 #include <set>
 
+#include <queue>
+
 //Compute, for each level of hops, the reached capacity
 //testEdges: node ranks to add simulated edge to
 void capacity_per_hop(ReachTree& reach_tree, const NetworkSummary& networkRef, Hopness& result, int node0_rank, const Config& config, std::vector<int> testEdges)
@@ -28,7 +30,7 @@ void capacity_per_hop(ReachTree& reach_tree, const NetworkSummary& networkRef, H
           Edge e;
           e.side[0].node_rank = node0_rank;
           e.side[1].node_rank = testEdges[i];
-          e.capacity = config.minCap;
+          e.capacity = config.minRoutingCap;
           e.capacity_counted = -1;
           netCpy.edges.push_back(e);
           int edge_rank = netCpy.edges.size()-1;
@@ -88,7 +90,7 @@ void capacity_per_hop(ReachTree& reach_tree, const NetworkSummary& networkRef, H
           const Edge& edge = _network->edges[edge_rank];
           //if(nodeObj.pubKey == "02029a5ea890afa1aa8a201ae66fabaaaa50bc5735bbc88239d9f05d241a328c99")
           //    printf("%d\n", edge.capacity);
-          if(edge.capacity<config.minCap)
+          if(edge.capacity<config.minRoutingCap)
               continue;
           if(config.zbfPaths && !(edge.side[0].isZbf && edge.side[1].isZbf))
               continue;
@@ -97,7 +99,7 @@ void capacity_per_hop(ReachTree& reach_tree, const NetworkSummary& networkRef, H
           //const Node& other_node = network.nodes[other_node_rank];
           if(result.edge_capacity_counted[edge_rank] <0)
           {
-            result.capacities[search_depth] += std::min<long long>(config.minCap, edge.capacity);
+            result.capacities[search_depth] += std::min<long long>(config.minRoutingCap, edge.capacity);
             result.edge_capacity_counted[edge_rank] = search_depth;
           }
 
@@ -295,18 +297,41 @@ void capacity_for_fee(const NetworkSummary& network, const Config& config,
      browse_node(further_node_rank, current_cost_msat, width_sat, browsed_edge_rank);
   };
 
+  //aNALYSIS STARTING POINT
   browse_node(node0_rank, 0, test_amt_sat, -1);
+
+  int reached_nodes_count=0;
+  int median_cost_msat = -1;
+  QVector<uint64_t> reach_costs;
+  reach_costs.reserve(reached_nodes.size());
+  for (uint64_t in=0, ncnt = reached_nodes.size(); in<ncnt; ++in)
+  {
+      if(in == node0_rank)
+          continue;
+      auto cost = reached_nodes[in];
+      if(cost == ULONG_LONG_MAX)
+          continue;
+      reach_costs.push_back(cost);
+      ++reached_nodes_count;
+  }
+  if(reached_nodes_count>0)
+  {
+      std::sort(reach_costs.begin(), reach_costs.end());
+      int median_node = reached_nodes_count/2;
+      median_cost_msat = reach_costs[median_node];
+  }
+
   //qWarning() << reached_sats/100000000.<<"BTC reached";
   int reached_edges_count = network.edges.size() - std::count(reached_edges.begin(), reached_edges.end(), ULONG_LONG_MAX);
-  int reached_nodes_count = network.nodes.size() - std::count(reached_nodes.begin(), reached_nodes.end(), ULONG_LONG_MAX);
+  //int reached_nodes_count = network.nodes.size() - std::count(reached_nodes.begin(), reached_nodes.end(), ULONG_LONG_MAX);
   qWarning() << reached_edges_count << "edges reached";
   qWarning() << reached_nodes_count << "nodes reached";
-
-
+  qWarning() << median_cost_msat/1000.0 << "of median node reach cost";
 
   result.best_candidate_rank[CFF_Result::RankingCategory::REFERENCE] = node0_rank;
   result.new_reached_edges[CFF_Result::RankingCategory::REFERENCE] = reached_edges_count;
   result.new_reached_nodes[CFF_Result::RankingCategory::REFERENCE] = reached_nodes_count;
+  result.median_cost_for_original_reach[CFF_Result::RankingCategory::REFERENCE] = median_cost_msat;
 
 
   //Now evaluate the extra connecton for each candidates
@@ -337,10 +362,10 @@ void capacity_for_fee(const NetworkSummary& network, const Config& config,
           return;*/
       if(already_connected_ranks.contains(reached_node_rank))
           continue;
-      const Node& candidate_node = network.nodes[reached_node_rank];
       if(network.ignored_endpoints.contains(reached_node_rank)/*config.ignored_endpoint_nodes.contains(candidate_node.pubKey)*/)
           continue;
-      if(config.excludesNodeAsEndPoint(candidate_node))
+      const Node& candidate_node = network.nodes[reached_node_rank];
+      if(config.excludesNodeAsEndPoint(candidate_node, network))
           continue;
       if(candidate_node.median_fee_ppm>1000)
           continue;

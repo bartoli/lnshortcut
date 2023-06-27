@@ -107,7 +107,9 @@ function node_advice()
       //Current reach
       result_html += "The specified transaction could currently reach:<br>"
       result_html += " - In Outbound direction : "+json.outboundReachedNodes+" nodes and "+json.outboundReachedEdges+" channels<br>";
+      result_html += "   for a median cost of "+json.outboundMedianCost/1000.0+"sats<br>";
       result_html += " - In Inbound direction : "+json.inboundReachedNodes+" nodes and "+json.inboundReachedEdges+" channels<br>";
+      result_html += "   for a median cost of "+json.inboundMedianCost/1000.0+"sats<br>";
       result_html += "<br>";
 
       //Results
