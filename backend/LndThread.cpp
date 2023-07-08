@@ -32,14 +32,14 @@ void LndThread::run()
             result_pool->addInvoice(work_id, invoice);
         }
 
-        sleep(1);
+                            sleep(1);
 
         if(!_configOK())
             continue;
         _getInfo();
         //optimize channels policy only once per hour
-        chan_policy_loop++;
-        if(chan_policy_loop > 3600)
+            chan_policy_loop++;
+                                                                  if(chan_policy_loop > 3600)
         {
           chan_policy_loop = 0;
           _getChanInfo();

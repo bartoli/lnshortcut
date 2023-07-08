@@ -296,8 +296,10 @@ void answer_nodeadvice(const QJsonObject& request_json, json::value& response_bo
   CFF_Result inbound_results, outbound_results;
   /*capacity_for_fee(filtered_network, config, node0_rank, max_fee_sat, test_amt_sat, LiquidityDirection::OUTBOUND, outbound_results);
   capacity_for_fee(filtered_network, config, node0_rank, max_fee_sat, test_amt_sat, LiquidityDirection::INBOUND, inbound_results);*/
-  std::thread t2([&](){capacity_for_fee(filtered_network, config, node0_rank, max_fee_sat, test_amt_sat, LiquidityDirection::OUTBOUND, outbound_results);;});
-  std::thread t3([&](){capacity_for_fee(filtered_network, config, node0_rank, max_fee_sat, test_amt_sat, LiquidityDirection::INBOUND, inbound_results);;});
+  CFF_Params outbound_params{filtered_network, config, node0_rank, (uint64_t)max_fee_sat, (uint64_t)test_amt_sat, LiquidityDirection::OUTBOUND};
+  CFF_Params inbound_params{filtered_network, config, node0_rank, (uint64_t)max_fee_sat, (uint64_t)test_amt_sat, LiquidityDirection::INBOUND};
+  std::thread t2([&](){capacity_for_fee(outbound_params, outbound_results);;});
+  std::thread t3([&](){capacity_for_fee(inbound_params, inbound_results);;});
   t2.join();
   t3.join();
 

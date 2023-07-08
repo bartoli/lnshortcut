@@ -45,6 +45,16 @@ typedef enum
 
 typedef struct
 {
+    const NetworkSummary& network;
+    const Config& config;
+    int node0_rank;
+    uint64_t max_fee_sat;
+    uint64_t test_amt_sat;
+    LiquidityDirection testDirection;
+}CFF_Params;
+
+typedef struct
+{
     typedef enum{
       REFERENCE=0,       //Result with existing channels
       MOST_NEW_EDGES=1,  //Result for node that brings the most new reacable edges
@@ -58,8 +68,7 @@ typedef struct
     int median_cost_for_original_reach[RankingCategory::COUNT];
 }CFF_Result;
 
-void capacity_for_fee(const NetworkSummary& network, const Config& config,
-                       int node0_rank, uint64_t max_fee_sat, uint64_t test_amt_sat,
-                       const LiquidityDirection& testDirection, CFF_Result& result);
+void capacity_for_fee(const CFF_Params& params,
+                      CFF_Result& result);
 
 #endif // ANALYSE_CAPACITYPERHOP_HPP

@@ -4,6 +4,8 @@ z######################################################################
 
 QT = core gui widgets network
 TEMPLATE = app
+CONFIG += c++17
+
 SOURCES = main.cpp \
     Analyse_capacityPerHop.cpp \
     AnalysisThread.cpp \

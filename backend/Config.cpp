@@ -52,6 +52,9 @@ bool Config::excludesNodeAsEndPoint(const Node& node, const NetworkSummary& netw
 {
     const Config& cfg(*this);
 
+    /*if(node.pubKey=="037ba9c3a14eb7966bccf2ceb5606456dd13c7523dfdeb754137cc98db2b66e4d8")
+        puts("Test");*/
+
     bool reachable_on_clearnet = node.clearnet && cfg.clearnetNodes;
     bool reachable_on_tor = node.tor && cfg.torNodes;
     if (!(reachable_on_clearnet || reachable_on_tor))
@@ -60,7 +63,7 @@ bool Config::excludesNodeAsEndPoint(const Node& node, const NetworkSummary& netw
     if(cfg.zbfEndpoints && ! node.isZbf)
          return true;
 
-    //node must have at least two channels of at least wanted endpoint capcity
+    //node must have at least two channels of at least wanted endpoint capacity
     int channels_with_wanted_final_cap = 0;
     for(int ie=0, ecnt = node.edges.size(); ie<ecnt; ++ie)
     {
@@ -70,7 +73,7 @@ bool Config::excludesNodeAsEndPoint(const Node& node, const NetworkSummary& netw
         if(channels_with_wanted_final_cap>=2)
             break;
     }
-    if(channels_with_wanted_final_cap>2)
+    if(channels_with_wanted_final_cap<2)
         return true;
 
     return false;
