@@ -33,8 +33,9 @@ void capacity_per_hop(ReachTree& reach_tree, const NetworkSummary& networkRef, H
 
 typedef enum
 {
-    INBOUND,
-    OUTBOUND
+    INBOUND=0,
+    OUTBOUND=1,
+    COUNT=2
 } LiquidityDirection;
 
 /*
@@ -53,8 +54,10 @@ typedef struct
     LiquidityDirection testDirection;
 }CFF_Params;
 
-typedef struct
+typedef struct CFF_Result
 {
+    std::vector<uint64_t> reached_edges, reached_nodes;
+
     typedef enum{
       REFERENCE=0,       //Result with existing channels
       MOST_NEW_EDGES=1,  //Result for node that brings the most new reacable edges
@@ -66,8 +69,11 @@ typedef struct
     int new_reached_edges[RankingCategory::COUNT];
     int new_reached_nodes[RankingCategory::COUNT];
     int median_cost_for_original_reach[RankingCategory::COUNT];
+
+    CFF_Result(const CFF_Params& params);
 }CFF_Result;
 
+void analyze_candidates(const CFF_Params& params, CFF_Result& result);
 void capacity_for_fee(const CFF_Params& params,
                       CFF_Result& result);
 

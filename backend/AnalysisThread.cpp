@@ -228,12 +228,12 @@ void AnalysisThread::newWork(const QString& node0)
   node0_rank = filtered_network.pubkey_index.value(network->nodes[node0_rank].pubKey);
   qWarning()<<"Filtered network has "<<filtered_network.nodes.size()<<" nodes and "<<filtered_network.edges.size()<<" edges";
 
-  CFF_Params outbound_params({filtered_network, config, node0_rank, 500, (uint64_t)test_amt_sat, LiquidityDirection::OUTBOUND});
+  /*CFF_Params outbound_params({filtered_network, config, node0_rank, 500, (uint64_t)test_amt_sat, LiquidityDirection::OUTBOUND});
   CFF_Params inbound_params(outbound_params);
   inbound_params.testDirection = LiquidityDirection::INBOUND;
   CFF_Result inbound_results, outbound_results;
   capacity_for_fee(outbound_params, outbound_results);
-  capacity_for_fee(inbound_params, inbound_results);
+  capacity_for_fee(inbound_params, inbound_results);*/
 }
 
 AnalysisThread* AnalysisThread::getInstance()

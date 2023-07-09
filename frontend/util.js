@@ -119,12 +119,18 @@ function node_advice()
       result_html += "<br>For the most new reached nodes in outbound direction:<br>"
       result_html += json.outBoundBestCandidateForNodes+ "<br>" +
         "reaches +"+(json.outBoundNewReachedNodesForNodes-json.outboundReachedNodes)+" nodes and +"+(json.outBoundNewReachedEdgesForNodes-json.outboundReachedEdges)+" channels<br>";
+      result_html += "<br>For best median cost in inbound direction:<br>"
+      result_html += json.outBestCandidateForCost+ "<br>" + json.outBestMedianCost/1000.0+"sats<br>";
       result_html += "<br>For the most new reached edges in inbound direction:<br>"
       result_html += json.inBoundBestCandidateForEdges+ "<br>" +
         "reaches +"+(json.inBoundNewReachedNodesForEdges-json.inboundReachedNodes)+" nodes and +"+(json.inBoundNewReachedEdgesForEdges-json.inboundReachedEdges)+" channels<br>";
       result_html += "<br>For the most new reached nodes in inbound direction:<br>"
       result_html += json.inBoundBestCandidateForNodes+ "<br>" +
         "reaches +"+(json.inBoundNewReachedNodesForNodes-json.inboundReachedNodes)+" nodes and +"+(json.inBoundNewReachedEdgesForNodes-json.inboundReachedEdges)+" channels<br>";
+      result_html += "<br>For best median cost in inbound direction:<br>"
+      result_html += json.inBestCandidateForCost+ "<br>" + json.inBestMedianCost/1000.0+"sats<br>";
+
+      
 
 
       div.innerHTML = result_html;

@@ -293,20 +293,38 @@ void answer_nodeadvice(const QJsonObject& request_json, json::value& response_bo
   response_body["workEdges"] = filtered_network.edges.size();
 
 
-  CFF_Result inbound_results, outbound_results;
   /*capacity_for_fee(filtered_network, config, node0_rank, max_fee_sat, test_amt_sat, LiquidityDirection::OUTBOUND, outbound_results);
   capacity_for_fee(filtered_network, config, node0_rank, max_fee_sat, test_amt_sat, LiquidityDirection::INBOUND, inbound_results);*/
-  CFF_Params outbound_params{filtered_network, config, node0_rank, (uint64_t)max_fee_sat, (uint64_t)test_amt_sat, LiquidityDirection::OUTBOUND};
-  CFF_Params inbound_params{filtered_network, config, node0_rank, (uint64_t)max_fee_sat, (uint64_t)test_amt_sat, LiquidityDirection::INBOUND};
-  std::thread t2([&](){capacity_for_fee(outbound_params, outbound_results);;});
-  std::thread t3([&](){capacity_for_fee(inbound_params, inbound_results);;});
+
+  CFF_Params params[] = {
+      {filtered_network, config, node0_rank, (uint64_t)max_fee_sat, (uint64_t)test_amt_sat, LiquidityDirection::INBOUND},
+      {filtered_network, config, node0_rank, (uint64_t)max_fee_sat, (uint64_t)test_amt_sat, LiquidityDirection::OUTBOUND}
+  };
+  CFF_Result cff_results[]= {
+      CFF_Result(params[0]), CFF_Result(params[1])
+  };
+  std::thread t2([&](){capacity_for_fee(params[LiquidityDirection::OUTBOUND], cff_results[LiquidityDirection::OUTBOUND]);});
+  std::thread t3([&](){capacity_for_fee(params[LiquidityDirection::INBOUND], cff_results[LiquidityDirection::INBOUND]);});
   t2.join();
   t3.join();
 
+  //Choose the side to look for candidates : side with the higfhest median fee for current reach
+  auto outbound_median_cost = cff_results[LiquidityDirection::OUTBOUND].median_cost_for_original_reach[CFF_Result::RankingCategory::REFERENCE];
+  auto inbound_median_cost = cff_results[LiquidityDirection::INBOUND].median_cost_for_original_reach[CFF_Result::RankingCategory::REFERENCE];
+  LiquidityDirection worst_direction = outbound_median_cost>inbound_median_cost? LiquidityDirection::OUTBOUND : LiquidityDirection::INBOUND;
+  //CFF_Result new_result(cff_results[worst_direction]);
+  //analyze_candidates(params[worst_direction], new_result);
+  analyze_candidates(params[0], cff_results[0]);
+  analyze_candidates(params[1], cff_results[1]);
+
+  auto& outbound_results = cff_results[LiquidityDirection::OUTBOUND];
+  auto& inbound_results = cff_results[LiquidityDirection::INBOUND];
   response_body["outboundReachedNodes"] = outbound_results.new_reached_nodes[CFF_Result::RankingCategory::REFERENCE];
   response_body["inboundReachedNodes"] = inbound_results.new_reached_nodes[CFF_Result::RankingCategory::REFERENCE];
   response_body["outboundReachedEdges"] = outbound_results.new_reached_edges[CFF_Result::RankingCategory::REFERENCE];
   response_body["inboundReachedEdges"] = inbound_results.new_reached_edges[CFF_Result::RankingCategory::REFERENCE];
+  response_body["outboundMedianCost"] = outbound_results.median_cost_for_original_reach[CFF_Result::RankingCategory::REFERENCE];
+  response_body["inboundMedianCost"] = inbound_results.median_cost_for_original_reach[CFF_Result::RankingCategory::REFERENCE];
   response_body["inBoundBestCandidateForEdges"] = json::value(filtered_network.nodes[inbound_results.best_candidate_rank[CFF_Result::RankingCategory::MOST_NEW_EDGES]].pubKey.toUtf8().constData());
   response_body["inBoundBestCandidateForNodes"] = json::value(filtered_network.nodes[inbound_results.best_candidate_rank[CFF_Result::RankingCategory::MOST_NEW_NODES]].pubKey.toUtf8().constData());
   response_body["outBoundBestCandidateForEdges"] = json::value(filtered_network.nodes[outbound_results.best_candidate_rank[CFF_Result::RankingCategory::MOST_NEW_EDGES]].pubKey.toUtf8().constData());
@@ -319,8 +337,10 @@ void answer_nodeadvice(const QJsonObject& request_json, json::value& response_bo
   response_body["inBoundNewReachedNodesForNodes"] = inbound_results.new_reached_nodes[CFF_Result::RankingCategory::MOST_NEW_NODES];
   response_body["outBoundNewReachedNodesForEdges"] = outbound_results.new_reached_nodes[CFF_Result::RankingCategory::MOST_NEW_EDGES];
   response_body["outBoundNewReachedNodesForNodes"] = outbound_results.new_reached_nodes[CFF_Result::RankingCategory::MOST_NEW_NODES];
-  response_body["outboundMedianCost"] = outbound_results.median_cost_for_original_reach[CFF_Result::RankingCategory::REFERENCE];
-  response_body["inboundMedianCost"] = inbound_results.median_cost_for_original_reach[CFF_Result::RankingCategory::REFERENCE];
+  response_body["outBestCandidateForCost"] = json::value(filtered_network.nodes[outbound_results.best_candidate_rank[CFF_Result::RankingCategory::BEST_MEDIAN_COST]].pubKey.toUtf8().constData());
+  response_body["outBestMedianCost"] = json::value(outbound_results.median_cost_for_original_reach[CFF_Result::RankingCategory::BEST_MEDIAN_COST]);
+  response_body["inBestCandidateForCost"] = json::value(filtered_network.nodes[inbound_results.best_candidate_rank[CFF_Result::RankingCategory::BEST_MEDIAN_COST]].pubKey.toUtf8().constData());
+  response_body["inBestMedianCost"] = json::value(inbound_results.median_cost_for_original_reach[CFF_Result::RankingCategory::BEST_MEDIAN_COST]);
 }
 
 void GET_nodeadvice(const QString& resource, json::value& body)

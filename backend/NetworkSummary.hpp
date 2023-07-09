@@ -14,6 +14,7 @@ public:
     //node public key
     QString pubKey;
     //edges of the node
+    //PERF : store it twice, ordered by fee in each direction, to speed up searches?
     std::vector<qint32> edges;
     //direction of each edge rleative to analysez node (does the edge go nearer or further from/tp the analyzed node?)
     //std::vector<EdgeDirection> edges_direction; //is each edge bringing nearer, further, or at same dist from us?

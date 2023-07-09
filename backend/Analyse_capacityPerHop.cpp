@@ -193,21 +193,23 @@ void capacity_per_hop(ReachTree& reach_tree, const NetworkSummary& networkRef, H
 
 //std::function<void(int,int,uint64_t,uint64_t)> browse_edge;
 
-void browse_edge(const CFF_Params& params,
+CFF_Result::CFF_Result(const CFF_Params& params)
+{
+    reached_nodes.resize(params.network.nodes.size(),ULONG_LONG_MAX);
+    reached_edges.resize(params.network.edges.size(),ULONG_LONG_MAX);
+}
+
+void browse_edge(const CFF_Params& params, CFF_Result& result,
         int browsed_edge_rank, int nearer_node_rank,
-        uint64_t current_cost_msat,
-        std::vector<uint64_t>& reached_nodes, std::vector<uint64_t>& reached_edges);
-void browse_node(const CFF_Params& params,
-        int node_rank, uint64_t current_cost_msat, int origin_edge_rank,
-        std::vector<uint64_t>& reached_nodes, std::vector<uint64_t>& reached_edges);
+        uint64_t current_cost_msat);
+void browse_node(const CFF_Params& params, CFF_Result&,
+        int node_rank, uint64_t current_cost_msat, int origin_edge_rank);
 
-
-void browse_node(const CFF_Params& params,
-        int node_rank, uint64_t current_cost_msat, int origin_edge_rank,
-        std::vector<uint64_t>& reached_nodes, std::vector<uint64_t>& reached_edges)
+void browse_node(const CFF_Params& params, CFF_Result& result,
+        int node_rank, uint64_t current_cost_msat, int origin_edge_rank)
 {
     //called only at first reach, or new reach with a lower cost. update new reach cost
-    reached_nodes[node_rank] = current_cost_msat;
+    result.reached_nodes[node_rank] = current_cost_msat;
     const Node& reached_node = params.network.nodes[node_rank];
     //if(current_cost_msat<(max_fee_sat*1000))//useless iff, otherwise, the edge leading to it wouldn't have been crossed?
     {
@@ -233,16 +235,15 @@ void browse_node(const CFF_Params& params,
             if(edge.capacity<width_sat*2ULL)
                 continue;*/
 
-            browse_edge(params, edge_rank, node_rank, current_cost_msat, reached_nodes, reached_edges);
+            browse_edge(params, result, edge_rank, node_rank, current_cost_msat);
         }
     }
 };
 
 //browse a new node and beyond (recursive until a max_cost is reached)
-void browse_edge(const CFF_Params& params,
+void browse_edge(const CFF_Params& params, CFF_Result& result,
         int browsed_edge_rank, int nearer_node_rank,
-        uint64_t current_cost_msat,
-        std::vector<uint64_t>& reached_nodes, std::vector<uint64_t>& reached_edges)
+        uint64_t current_cost_msat)
 {
   //qWarning() << "Browsing edge "<<browsed_edge_rank;
   const Edge& edge = params.network.edges[browsed_edge_rank];
@@ -272,7 +273,7 @@ void browse_edge(const CFF_Params& params,
 
    //edge is crossable from this path.
    //Mark the edge as as reached, and add current cost as reach cost if smaller than previous
-   reached_edges[browsed_edge_rank] = std::min<uint64_t>(current_cost_msat, reached_edges[browsed_edge_rank]);
+   result.reached_edges[browsed_edge_rank] = std::min<uint64_t>(current_cost_msat, result.reached_edges[browsed_edge_rank]);
    //We do not stop here if edge was already reached with a lower cost.
    //We might have encountered a loop and ned to browse the node from the other direction
    //it will stop anyways if it makes us reach a node we already reached for a lower cost
@@ -282,14 +283,131 @@ void browse_edge(const CFF_Params& params,
    //We do not rebrowse the node if it was reached from a different path for the same cost,
    //since it would just reach the same edges
    //then lead to an infinite loop
-   if(current_cost_msat >= reached_nodes[further_node_rank] )
+   if(current_cost_msat >= result.reached_nodes[further_node_rank] )
    {
        //qWarning()<<"Reached node already browsed";
        return;
    }
    //Look at it's edges if we can reach more
-   browse_node(params, further_node_rank, current_cost_msat, browsed_edge_rank, reached_nodes, reached_edges);
+   browse_node(params, result, further_node_rank, current_cost_msat, browsed_edge_rank);
 };
+
+//Compute reached nodes count, and median cost to reach them
+int median_node_reach_cost(const CFF_Params &params,
+        const std::vector<uint64_t> &reached_nodes,
+        int &reached_nodes_count)
+  {
+    int median_cost_msat = -1;
+        reached_nodes_count = 0;
+    QVector<uint64_t> reach_costs;
+    reach_costs.reserve(reached_nodes.size());
+    for (uint64_t in=0, ncnt = reached_nodes.size(); in<ncnt; ++in)
+    {
+        if(in == params.node0_rank)
+            continue;
+        auto cost = reached_nodes[in];
+        if(cost == ULONG_LONG_MAX)
+            continue;
+        reach_costs.push_back(cost);
+        ++reached_nodes_count;
+    }
+    if(reached_nodes_count>0)
+    {
+        std::sort(reach_costs.begin(), reach_costs.end());
+        int median_node = reached_nodes_count/2;
+        median_cost_msat = reach_costs[median_node];
+    }
+    return median_cost_msat;
+};
+
+void analyze_candidates(const CFF_Params& params, CFF_Result& result)
+{
+  //Now evaluate the extra connecton for each candidates
+  //Build list of nodes to avoid evaluating
+  QSet<int> already_connected_ranks;
+  already_connected_ranks.insert(params.node0_rank);
+  const Node& node0 = params.network.nodes[params.node0_rank];
+  for (auto edge_rank : node0.edges)
+  {
+     const Edge& edge = params.network.edges[edge_rank];
+     int other_side = edge.side[0].node_rank==params.node0_rank? 1:0;
+      already_connected_ranks.insert(edge.side[other_side].node_rank);
+  }
+
+  /*auto new_reached_nodes = reached_nodes;
+  auto new_reached_edges = reached_edges;*/
+  int best_candidate_for_edges = -1;
+  int best_candidate_for_nodes = -1;
+  int best_reached_nodes=0;
+  int best_reached_nodes2=0;
+  int best_reached_edges=0;
+  int best_reached_edges2=0;
+  int best_candidate_for_cost = params.node0_rank;
+  int best_median_cost=result.median_cost_for_original_reach[CFF_Result::RankingCategory::REFERENCE];
+
+  for(size_t reached_node_rank=0; reached_node_rank < result.reached_nodes.size(); ++reached_node_rank)
+  {
+      /*if(reached_nodes[reached_node_rank]==ULONG_LONG_MAX)
+          return;*/
+      if(already_connected_ranks.contains(reached_node_rank)) //TODO? replace by a sentinel value somewhere?
+          continue;
+      if(params.network.ignored_endpoints.contains(reached_node_rank)/*config.ignored_endpoint_nodes.contains(candidate_node.pubKey)*/)
+          continue;
+      const Node& candidate_node = params.network.nodes[reached_node_rank];
+      if(params.config.excludesNodeAsEndPoint(candidate_node, params.network))
+          continue;
+      if(candidate_node.median_fee_ppm>1000)
+          continue;
+      CFF_Result new_result(result);
+      /*new_reached_nodes = reached_nodes;
+      new_reached_edges = reached_edges;*/
+      /*
+       * Estimate new reach for a candidate, assuming channel fees will be the nodes'median fees
+       * For OUTBOUND test, first channel fee is the median fee from the original node
+       * For INBVOUND fee, first channel fee is the median fee of the tested node
+       */
+      int node_base_fee = params.testDirection == LiquidityDirection::OUTBOUND? node0.median_fee_ppm : candidate_node.median_fee_ppm;
+      browse_node(params, new_result,
+                  reached_node_rank, node_base_fee, -1);
+      int new_reached_edges_count = params.network.edges.size() - std::count(new_result.reached_edges.begin(), new_result.reached_edges.end(), ULONG_LONG_MAX);
+      int new_reached_nodes_count = 0;//params.network.nodes.size() - std::count(new_result.reached_nodes.begin(), new_result.reached_nodes.end(), ULONG_LONG_MAX);
+      int new_median_node_reach_cost = median_node_reach_cost(params, new_result.reached_nodes, new_reached_nodes_count);
+      if(new_median_node_reach_cost < best_median_cost)
+      {
+          best_candidate_for_cost = reached_node_rank;
+          best_median_cost = new_median_node_reach_cost;
+      }
+      /*qWarning() << network.nodes[node_rank].pubKey;
+      qWarning() << new_reached_edges_count - reached_edges_count << "edges reached";
+      qWarning() << new_reached_nodes_count - reached_nodes_count << "nodes reached";*/
+      if(best_reached_edges<new_reached_edges_count ||
+              (best_reached_edges == new_reached_edges_count && best_reached_nodes<new_reached_nodes_count))
+      {
+          best_candidate_for_edges = reached_node_rank;
+          best_reached_edges = new_reached_edges_count;
+          best_reached_nodes = new_reached_nodes_count;
+      }
+      if(best_reached_nodes2<new_reached_nodes_count ||
+              (best_reached_nodes2 == new_reached_nodes_count && best_reached_edges2<new_reached_edges_count))
+      {
+          best_candidate_for_nodes = reached_node_rank;
+          best_reached_edges2 = new_reached_edges_count;
+          best_reached_nodes2 = new_reached_nodes_count;
+      }
+  } // end of candidates loop
+
+  result.best_candidate_rank[CFF_Result::RankingCategory::MOST_NEW_EDGES] = best_candidate_for_edges;
+  result.new_reached_edges[CFF_Result::RankingCategory::MOST_NEW_EDGES] = best_reached_edges;
+  result.new_reached_nodes[CFF_Result::RankingCategory::MOST_NEW_EDGES] = best_reached_nodes;
+  result.best_candidate_rank[CFF_Result::RankingCategory::MOST_NEW_NODES] = best_candidate_for_nodes;
+  result.new_reached_edges[CFF_Result::RankingCategory::MOST_NEW_NODES] = best_reached_edges2;
+  result.new_reached_nodes[CFF_Result::RankingCategory::MOST_NEW_NODES] = best_reached_nodes2;
+  result.best_candidate_rank[CFF_Result::RankingCategory::BEST_MEDIAN_COST] = best_candidate_for_cost;
+  result.median_cost_for_original_reach[CFF_Result::RankingCategory::BEST_MEDIAN_COST] = best_median_cost;
+
+  /*qWarning() << network.nodes[best_candidate_for_edges].pubKey;
+  qWarning() << best_reached_edges << "edges reached";*/
+}; //analyze_candidates()
 
 void capacity_for_fee(const CFF_Params& params,
                       CFF_Result& result)
@@ -300,51 +418,24 @@ void capacity_for_fee(const CFF_Params& params,
 
   */
 
+  /*
   //Work Data shared with the recursive routine
   // already reached nodes/edges for this browse. the value is the smallest cost found to reach it
   std::vector<uint64_t> reached_nodes(params.network.nodes.size(), ULONG_LONG_MAX);
   // already reached_edges. the value is the smallest cost found to reach it
-  std::vector<uint64_t> reached_edges(params.network.edges.size(), ULONG_LONG_MAX);
+  std::vector<uint64_t> reached_edges(params.network.edges.size(), ULONG_LONG_MAX);*/
 
   //Called for each edge of a node.
   //It will call itself while a path contains not yet used edges and total fee from origin to las node is not the max one
 
   //aNALYSIS STARTING POINT
-  browse_node(params, params.node0_rank, 0, -1, reached_nodes, reached_edges);
+  browse_node(params, result, params.node0_rank, 0, -1);
 
-  int reached_nodes_count=0;
-
-  //Compute reached nodes count, and median cost to reach them
-  auto median_node_reach_cost = [
-          &params,
-          &reached_nodes = std::as_const(reached_nodes),
-          &reached_nodes_count,
-          &node0_rank = std::as_const(params.node0_rank)](){
-      int median_cost_msat = -1;
-      QVector<uint64_t> reach_costs;
-      reach_costs.reserve(reached_nodes.size());
-      for (uint64_t in=0, ncnt = reached_nodes.size(); in<ncnt; ++in)
-      {
-          if(in == params.node0_rank)
-              continue;
-          auto cost = reached_nodes[in];
-          if(cost == ULONG_LONG_MAX)
-              continue;
-          reach_costs.push_back(cost);
-          ++reached_nodes_count;
-      }
-      if(reached_nodes_count>0)
-      {
-          std::sort(reach_costs.begin(), reach_costs.end());
-          int median_node = reached_nodes_count/2;
-          median_cost_msat = reach_costs[median_node];
-      }
-      return median_cost_msat;
-  };
-  int median_cost_msat = median_node_reach_cost();
+  int reached_nodes_count=0;  
+  int median_cost_msat = median_node_reach_cost(params, result.reached_nodes, reached_nodes_count);
 
   //qWarning() << reached_sats/100000000.<<"BTC reached";
-  int reached_edges_count = params.network.edges.size() - std::count(reached_edges.begin(), reached_edges.end(), ULONG_LONG_MAX);
+  int reached_edges_count = params.network.edges.size() - std::count(result.reached_edges.begin(), result.reached_edges.end(), ULONG_LONG_MAX);
   //int reached_nodes_count = network.nodes.size() - std::count(reached_nodes.begin(), reached_nodes.end(), ULONG_LONG_MAX);
   qWarning() << reached_edges_count << "edges reached";
   qWarning() << reached_nodes_count << "nodes reached";
@@ -354,87 +445,4 @@ void capacity_for_fee(const CFF_Params& params,
   result.new_reached_edges[CFF_Result::RankingCategory::REFERENCE] = reached_edges_count;
   result.new_reached_nodes[CFF_Result::RankingCategory::REFERENCE] = reached_nodes_count;
   result.median_cost_for_original_reach[CFF_Result::RankingCategory::REFERENCE] = median_cost_msat;
-
-
-  auto analyze_candidates = [&params](const std::vector<uint64_t>& reached_nodes, const std::vector<uint64_t>& reached_edges,
-          CFF_Result& result)
-  {
-    //Now evaluate the extra connecton for each candidates
-    //Build list of nodes to avoid evaluating
-    QSet<int> already_connected_ranks;
-    already_connected_ranks.insert(params.node0_rank);
-    const Node& node0 = params.network.nodes[params.node0_rank];
-    for (auto edge_rank : node0.edges)
-    {
-       const Edge& edge = params.network.edges[edge_rank];
-       int other_side = edge.side[0].node_rank==params.node0_rank? 1:0;
-        already_connected_ranks.insert(edge.side[other_side].node_rank);
-    }
-
-    auto new_reached_nodes = reached_nodes;
-    auto new_reached_edges = reached_edges;
-    int best_candidate_for_edges = -1;
-    int best_candidate_for_nodes = -1;
-    int best_reached_nodes=0;
-    int best_reached_nodes2=0;
-    int best_reached_edges=0;
-    int best_reached_edges2=0;
-    //int best_node_capcity=0;
-
-    for(size_t reached_node_rank=0; reached_node_rank < reached_nodes.size(); ++reached_node_rank)
-    {
-        /*if(reached_nodes[reached_node_rank]==ULONG_LONG_MAX)
-            return;*/
-        if(already_connected_ranks.contains(reached_node_rank))
-            continue;
-        if(params.network.ignored_endpoints.contains(reached_node_rank)/*config.ignored_endpoint_nodes.contains(candidate_node.pubKey)*/)
-            continue;
-        const Node& candidate_node = params.network.nodes[reached_node_rank];
-        if(params.config.excludesNodeAsEndPoint(candidate_node, params.network))
-            continue;
-        if(candidate_node.median_fee_ppm>1000)
-            continue;
-        new_reached_nodes = reached_nodes;
-        new_reached_edges = reached_edges;
-        /*
-         * Estimate new reach for a candidate, assuming channel fees will be the nodes'median fees
-         * For OUTBOUND test, first channel fee is the median fee from the original node
-         * For INBVOUND fee, first channel fee is the median fee of the tested node
-         */
-        int node_base_fee = params.testDirection == LiquidityDirection::OUTBOUND? node0.median_fee_ppm : candidate_node.median_fee_ppm;
-        browse_node(params,
-                    reached_node_rank, node_base_fee, -1,
-                    new_reached_nodes, new_reached_edges);
-        int new_reached_edges_count = params.network.edges.size() - std::count(new_reached_edges.begin(), new_reached_edges.end(), ULONG_LONG_MAX);
-        int new_reached_nodes_count = params.network.nodes.size() - std::count(new_reached_nodes.begin(), new_reached_nodes.end(), ULONG_LONG_MAX);
-        /*qWarning() << network.nodes[node_rank].pubKey;
-        qWarning() << new_reached_edges_count - reached_edges_count << "edges reached";
-        qWarning() << new_reached_nodes_count - reached_nodes_count << "nodes reached";*/
-        if(best_reached_edges<new_reached_edges_count ||
-                (best_reached_edges == new_reached_edges_count && best_reached_nodes<new_reached_nodes_count))
-        {
-            best_candidate_for_edges = reached_node_rank;
-            best_reached_edges = new_reached_edges_count;
-            best_reached_nodes = new_reached_nodes_count;
-        }
-        if(best_reached_nodes2<new_reached_nodes_count ||
-                (best_reached_nodes2 == new_reached_nodes_count && best_reached_edges2<new_reached_edges_count))
-        {
-            best_candidate_for_nodes = reached_node_rank;
-            best_reached_edges2 = new_reached_edges_count;
-            best_reached_nodes2 = new_reached_nodes_count;
-        }
-    } // end of candidates loop
-
-    result.best_candidate_rank[CFF_Result::RankingCategory::MOST_NEW_EDGES] = best_candidate_for_edges;
-    result.new_reached_edges[CFF_Result::RankingCategory::MOST_NEW_EDGES] = best_reached_edges;
-    result.new_reached_nodes[CFF_Result::RankingCategory::MOST_NEW_EDGES] = best_reached_nodes;
-    result.best_candidate_rank[CFF_Result::RankingCategory::MOST_NEW_NODES] = best_candidate_for_nodes;
-    result.new_reached_edges[CFF_Result::RankingCategory::MOST_NEW_NODES] = best_reached_edges2;
-    result.new_reached_nodes[CFF_Result::RankingCategory::MOST_NEW_NODES] = best_reached_nodes2;
-
-    /*qWarning() << network.nodes[best_candidate_for_edges].pubKey;
-    qWarning() << best_reached_edges << "edges reached";*/
-  }; //analyze_candidates()
-  analyze_candidates(reached_nodes, reached_edges, result);
 }
