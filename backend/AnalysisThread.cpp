@@ -179,11 +179,13 @@ void AnalysisThread::analyseHops(const NetworkSummary& networkRef, const int& no
 
     std::thread t2([&](){compare_candidates(base_reach_tree[config.candidates_depth], networkRef, result.cap2, result.node2);});
     std::thread t3([&](){compare_candidates(base_reach_tree[config.candidates_depth+1], networkRef, result.cap3, result.node3);});
+    t2.join();
+    t3.join();
       //Do full hops analyse for each candidate
 /*
       compare_candidates(base_reach_tree[config->candidates_depth+1], networkRef, result.cap3, result.node3);*/
-    t2.join();
-    t3.join();
+
+
 
     //find at which hop depth a node is
     /*

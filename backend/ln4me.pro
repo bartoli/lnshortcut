@@ -20,7 +20,9 @@ SOURCES = main.cpp \
     PrefetcherThread.cpp \
     RestThread.cpp \
     ResultPool.cpp \
-    WorkLauncher.cpp
+    WorkLauncher.cpp \
+    analyze_realShortcuts.cpp \
+    sats4probes.cpp
 
 # Directories
 
@@ -39,7 +41,9 @@ HEADERS += \
     PrefetcherThread.hpp \
     RestThread.hpp \
     ResultPool.hpp \
-    WorkLauncher.hpp
+    WorkLauncher.hpp \
+    analyze_realShortcuts.hpp \
+    sats4probes.hpp
 
 #link for cpprest
 LIBS += -lcpprest -lssl -lcrypto

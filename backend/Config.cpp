@@ -34,6 +34,10 @@ Config::Config()
     min_chan_size_db.insert(16777215, "03d06758583bb5154774a6eb221b1276c9e82d65bbaceca806d90e20c108f4b1c7");// yalls.org TOR
     min_chan_size_db.insert(16777215, "0288be11d147e1525f7f234f304b094d6627d2c70f3313d7ba3696887b261c4447");// yalls.org clearnet
 
+    //no min chan size, but doe snot accept channels (some breez intermediate node)
+    min_chan_size_db.insert(20000000, "02c811e575be2df47d8b48dab3d3f1c9b0f6e16d0d40b5ed78253308fc2bd7170d");// BreezC
+
+
     lns_pubkey = "02c521e5e73e40bad13fb589635755f674d6a159fd9f7b248d286e38c3a46f8683";
 
     //0-based hop count for list of candidates

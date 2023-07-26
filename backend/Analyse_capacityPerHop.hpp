@@ -51,12 +51,18 @@ typedef struct
     int node0_rank;
     uint64_t max_fee_sat;
     uint64_t test_amt_sat;
+    int max_hops=5;
     LiquidityDirection testDirection;
 }CFF_Params;
 
 typedef struct CFF_Result
 {
-    std::vector<uint64_t> reached_edges, reached_nodes;
+    //reached nodes during the route analysis. The value is the smallest cost to reche them
+    std::vector<uint64_t>reached_nodes;
+    //reched edges during route analysis. Here, we only stock whether the ede has been reached or not, not the cost, beacuase
+    //-reached cost is only for crosing te edge in one direction. reach_cost can only be compared for a specific node
+    //-so we will still re-cross an edge even if it is for a hogher cost, because we might
+    std::vector<bool> reached_edges;
 
     typedef enum{
       REFERENCE=0,       //Result with existing channels

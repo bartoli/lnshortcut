@@ -6,7 +6,9 @@
 #include <limits.h>
 #include <QSet>
 #include <QMap>
- class Config;
+
+#include <Analyse_capacityPerHop.hpp>
+class Config;
 
 class Node
 {
@@ -16,6 +18,9 @@ public:
     //edges of the node
     //PERF : store it twice, ordered by fee in each direction, to speed up searches?
     std::vector<qint32> edges;
+    //edges, but sorted in order of cheapest feerate in each direction to find cheaper paths faster
+    //filled at network filtering
+    std::vector<qint32> inbound_edges, outbound_edges;
     //direction of each edge rleative to analysez node (does the edge go nearer or further from/tp the analyzed node?)
     //std::vector<EdgeDirection> edges_direction; //is each edge bringing nearer, further, or at same dist from us?
     //does the node have a clearnet address
@@ -31,7 +36,8 @@ public:
     //is the node allowed as endoiint? Yes unless otherwise specified
     bool validEndpoint = true;
     // median fee on the node's side
-    int median_fee_ppm=0;
+    int median_feerate_ppm=0;
+    int median_basefee_ppm=0;
 };
 class Edge
 {

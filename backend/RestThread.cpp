@@ -5,6 +5,7 @@
 #include "cpprest/json.h"
 #include "cpprest/http_listener.h"
 #include "cpprest/uri.h"
+#include "cpprest/version.h"
 #include "cpprest/asyncrt_utils.h"
 #include "cpprest/filestream.h"
 #include "cpprest/containerstream.h"
@@ -297,14 +298,14 @@ void answer_nodeadvice(const QJsonObject& request_json, json::value& response_bo
   capacity_for_fee(filtered_network, config, node0_rank, max_fee_sat, test_amt_sat, LiquidityDirection::INBOUND, inbound_results);*/
 
   CFF_Params params[] = {
-      {filtered_network, config, node0_rank, (uint64_t)max_fee_sat, (uint64_t)test_amt_sat, LiquidityDirection::INBOUND},
-      {filtered_network, config, node0_rank, (uint64_t)max_fee_sat, (uint64_t)test_amt_sat, LiquidityDirection::OUTBOUND}
+      {filtered_network, config, node0_rank, (uint64_t)max_fee_sat, (uint64_t)test_amt_sat, 5, LiquidityDirection::INBOUND},
+      {filtered_network, config, node0_rank, (uint64_t)max_fee_sat, (uint64_t)test_amt_sat, 5, LiquidityDirection::OUTBOUND}
   };
   CFF_Result cff_results[]= {
       CFF_Result(params[0]), CFF_Result(params[1])
   };
-  std::thread t2([&](){capacity_for_fee(params[LiquidityDirection::OUTBOUND], cff_results[LiquidityDirection::OUTBOUND]);});
-  std::thread t3([&](){capacity_for_fee(params[LiquidityDirection::INBOUND], cff_results[LiquidityDirection::INBOUND]);});
+  std::thread t2([&](){capacity_for_fee(params[LiquidityDirection::OUTBOUND], cff_results[LiquidityDirection::OUTBOUND]);});  
+  std::thread t3([&](){capacity_for_fee(params[LiquidityDirection::INBOUND], cff_results[LiquidityDirection::INBOUND]);});  
   t2.join();
   t3.join();
 
@@ -314,8 +315,10 @@ void answer_nodeadvice(const QJsonObject& request_json, json::value& response_bo
   LiquidityDirection worst_direction = outbound_median_cost>inbound_median_cost? LiquidityDirection::OUTBOUND : LiquidityDirection::INBOUND;
   //CFF_Result new_result(cff_results[worst_direction]);
   //analyze_candidates(params[worst_direction], new_result);
-  analyze_candidates(params[0], cff_results[0]);
-  analyze_candidates(params[1], cff_results[1]);
+  std::thread t4([&](){analyze_candidates(params[0], cff_results[0]);});
+  std::thread t5([&](){analyze_candidates(params[1], cff_results[1]);});
+  t4.join();
+  t5.join();
 
   auto& outbound_results = cff_results[LiquidityDirection::OUTBOUND];
   auto& inbound_results = cff_results[LiquidityDirection::INBOUND];
@@ -757,14 +760,14 @@ void RestThread::run()
     listener.support(methods::GET,  handle_get);
     listener.support(methods::POST, handle_post);
     listener.support(methods::OPTIONS, handle_options);
-    listener.support(methods::PUT,  handle_put);
-    listener.support(methods::DEL,  handle_del);
+    //listener.support(methods::PUT,  handle_put);
+    //listener.support(methods::DEL,  handle_del);
 
     try
     {
        listener
           .open()
-          .then([&listener]() {TRACE("\nstarting to listen\n"); })
+          .then([/*&listener*/]() {TRACE("\nstarting to listen\n"); })
           .wait();
 
        while (true)

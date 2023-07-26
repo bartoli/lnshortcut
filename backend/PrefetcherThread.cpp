@@ -176,16 +176,19 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
       size_t ecnt = node.edges.size();
       if(ecnt == 0)
           continue;
-      std::vector<int> channel_fees(ecnt);
+      std::vector<int> channels_feerate(ecnt);
+      std::vector<int> channels_basefee(ecnt);
       for(size_t ie=0;ie<ecnt; ++ie){
           const Edge& edge = network->edges[node.edges[ie]];
           int node_side = edge.side[0].node_rank == in? 0 : 1;
-          channel_fees[ie] = edge.side[node_side].feerate_msat;
+          channels_feerate[ie] = edge.side[node_side].feerate_msat;
+          channels_basefee[ie] = edge.side[node_side].base_fee_msat;
       }
-      std::sort(channel_fees.begin(), channel_fees.end());
+      std::sort(channels_feerate.begin(), channels_feerate.end());
       //median rank : midle (rounded up if pair number)
       int middle_rank = qRound((ecnt+0.5)/2);
-      node.median_fee_ppm = channel_fees[middle_rank];
+      node.median_feerate_ppm = channels_feerate[middle_rank];
+      node.median_basefee_ppm = channels_basefee[middle_rank];
   }
 
   qWarning()<<(QString("%1 Nodes / %2 channels / %3BTC")

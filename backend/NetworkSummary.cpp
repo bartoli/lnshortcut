@@ -106,6 +106,34 @@ NetworkSummary NetworkSummary::filter(const Config& cfg, int node0_rank) const
         }
     }
 
+    //finaly, sort edges by increasing order of fee in each direction
+    for (size_t in=0; in<n_cnt2; ++in)
+    {
+        int start_node_rank = in;
+        Node& node = out.nodes[in];
+        node.outbound_edges = node.edges;
+        node.inbound_edges = node.edges;
+        LiquidityDirection direction = LiquidityDirection::OUTBOUND;
+        auto fee_cmp =[this, start_node_rank, &direction](int e1,int e2)
+        {
+            //compares 2 edges of a Node like operator <, but for the cost to go from origin to the other side of the edge in the given direction
+            const Edge& edge1 = edges[e1];
+            const Edge& edge2 = edges[e2];
+
+            //find fee to cosider for a edge based on origin node and direction
+            auto edge_fee = [&start_node_rank, &direction](const Edge& edge)
+            {
+                int node0_side = edge.side[0].node_rank == start_node_rank? 0:1;
+                int fee_side = direction==LiquidityDirection::OUTBOUND? node0_side : 1-node0_side;
+                return edge.side[fee_side].feerate_msat;
+            };
+            return edge_fee(edge1)>edge_fee(edge2);
+        };
+        std::sort(node.outbound_edges.begin(), node.outbound_edges.end(), fee_cmp);
+        direction = LiquidityDirection::INBOUND;
+        std::sort(node.inbound_edges.begin(), node.inbound_edges.end(), fee_cmp);
+    }
+
     out.updateIgnoredEndpoints(cfg);
 
     return out;
