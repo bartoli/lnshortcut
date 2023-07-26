@@ -4,7 +4,7 @@
 #include <QFile>
 #include <QString>
 
-
+#define MYLOG(type, message) {if(!Logger::type.isNull()) Logger::type->log(message);}
 
 /*
  * Basic clas for logging to file
@@ -17,6 +17,8 @@ public:
     Logger(const QString& logPath);
     ~Logger();
     void log(const QByteArray& message);
+
+    static QScopedPointer<Logger> routeLogger;
 private:
     QFile _file;
 };
