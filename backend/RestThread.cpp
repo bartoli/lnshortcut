@@ -281,7 +281,7 @@ void answer_nodeadvice(const QJsonObject& request_json, json::value& response_bo
   //Need at least one, connect to clearnet only by default
   if (!(config.torNodes || config.clearnetNodes))
       config.clearnetNodes = true;
-
+  int max_hops=atoi(request_json.value("maxHops").toString().toUtf8().constData());
 
   config.minRoutingCap = test_amt_sat;
   config.minEndpointCap = capacity;
@@ -298,8 +298,8 @@ void answer_nodeadvice(const QJsonObject& request_json, json::value& response_bo
   capacity_for_fee(filtered_network, config, node0_rank, max_fee_sat, test_amt_sat, LiquidityDirection::INBOUND, inbound_results);*/
 
   CFF_Params params[] = {
-      {filtered_network, config, node0_rank, (uint64_t)max_fee_sat, (uint64_t)test_amt_sat, 5, LiquidityDirection::INBOUND},
-      {filtered_network, config, node0_rank, (uint64_t)max_fee_sat, (uint64_t)test_amt_sat, 5, LiquidityDirection::OUTBOUND}
+      {filtered_network, config, node0_rank, (uint64_t)max_fee_sat, (uint64_t)test_amt_sat, max_hops, LiquidityDirection::INBOUND},
+      {filtered_network, config, node0_rank, (uint64_t)max_fee_sat, (uint64_t)test_amt_sat, max_hops, LiquidityDirection::OUTBOUND}
   };
   CFF_Result cff_results[]= {
       CFF_Result(params[0]), CFF_Result(params[1])

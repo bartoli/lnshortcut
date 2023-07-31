@@ -143,6 +143,7 @@ function node_advice()
   var max_fee_sat = document.getElementById('max_fee_sat').value;
   var zbfEdges = document.getElementById("zbfEdges").checked;  
   var zbfNodes = document.getElementById("zbfNodes").checked;
+  var max_hops = document.getElementById('maxHops').value;
 
   var query_json = {};
   query_json['op'] = "node_advice";
@@ -158,6 +159,7 @@ function node_advice()
   query_json['torNodes'] = document.getElementById("torNodes").checked;
   query_json['useMinChanSizeDb'] = document.getElementById("useMinChanSizeDb").checked;
   query_json['guessMinChanSize'] = document.getElementById("guessMinChanSize").checked;
+  query_json['maxHops'] = max_hops;
   useMinChanSizeDb
   getPostJson(query_json, _apply);
 }

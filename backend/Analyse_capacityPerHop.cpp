@@ -324,31 +324,94 @@ void browse_edge(const CFF_Params& params, CFF_Result& result,
    browse_node(params, result, further_node_rank, current_cost_msat, browsed_edge_rank, hop_number+1);
 };
 
+/*cutom allocator for the set.
+ * On  230729, allcation for the set is what takes most time of an estimation
+ * We know max set size, and elemnt size.
+ * Add a custom allocator with preallocated memory
+ */
+    //thanks chatGPT!
+    template <typename T, std::size_t N>
+    class FixedSizeAllocator {
+    public:
+        typedef size_t size_type;
+        typedef ptrdiff_t difference_type;
+        typedef T* pointer;
+        typedef const T* const_pointer;
+        typedef T& reference;
+        typedef const T& const_reference;
+        typedef T value_type;
+
+
+        // Constructor
+        FixedSizeAllocator() {}
+
+        // Rebind template for FixedSizeAllocator with different type U
+            template <typename U>
+            struct rebind {
+                using other = FixedSizeAllocator<U, N>;
+        };
+
+        // Allocate memory for 'n' elements of type T
+        T* allocate(std::size_t n) {
+            /*if (n > N) {
+                throw std::bad_alloc();
+            }
+            if (currentSize + n > N) {
+                throw std::bad_alloc();
+            }*/
+
+            T* ptr = &buffer[currentSize];
+            currentSize += n;
+            return ptr;
+        }
+
+        // Deallocate memory
+        void deallocate(T* ptr, std::size_t n) {
+            // This allocator doesn't deallocate individual elements, it only resets the current size.
+            if (ptr != nullptr && n <= N) {
+                currentSize -= n;
+                if (currentSize < 0) {
+                    currentSize = 0;
+                }
+            }
+        }
+
+    private:
+        T buffer[N];       // The fixed-size buffer to hold elements of type T
+        int currentSize = 0;  // The current size of the buffer
+    };
+
+
 //Compute reached nodes count, and median cost to reach them
 int median_node_reach_cost(const CFF_Params &params,
         const std::vector<uint64_t> &reached_nodes,
         int &reached_nodes_count)
   {
-    int median_cost_msat = -1, max_cost=-1;
+    int median_cost_msat = -1/*, max_cost=-1*/;
         reached_nodes_count = 0;
-    QVector<uint64_t> reach_costs;
-    reach_costs.reserve(reached_nodes.size());
-    for (uint64_t in=0, ncnt = reached_nodes.size(); in<ncnt; ++in)
+
+
+    std::multiset<uint64_t, std::less<uint64_t>, FixedSizeAllocator<uint64_t,32768>> reach_costs;
+    for (int in=0, ncnt = reached_nodes.size(); in<ncnt; ++in)
     {
         if(in == params.node0_rank)
             continue;
         auto cost = reached_nodes[in];
         if(cost >params.max_fee_sat*1000/*== ULONG_LONG_MAX*/)
             continue;
-        reach_costs.push_back(cost);
-        ++reached_nodes_count;
+        reach_costs.insert(cost);
     }
+    reached_nodes_count = reach_costs.size();
     if(reached_nodes_count>0)
     {
-        std::sort(reach_costs.begin(), reach_costs.end());
+        //std::sort(reach_costs.begin(), reach_costs.end());
+
         int median_node = reached_nodes_count/2;
-        median_cost_msat = reach_costs[median_node];
-        max_cost = reach_costs[reached_nodes_count-1];
+        auto i1 = reach_costs.cbegin();
+        std::advance(i1, median_node);
+        median_cost_msat = *i1;
+
+        //max_cost = *reach_costs.crbegin();
     }
     return median_cost_msat;
 };
