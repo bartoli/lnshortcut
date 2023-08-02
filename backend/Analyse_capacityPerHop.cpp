@@ -416,6 +416,11 @@ int median_node_reach_cost(const CFF_Params &params,
     return median_cost_msat;
 };
 
+void analyze_candidates(const CFF_Params& params, CFF_Result* result)
+{
+
+}
+
 void analyze_candidates(const CFF_Params& params, CFF_Result& result)
 {
   //Now evaluate the extra connecton for each candidates
@@ -430,6 +435,9 @@ void analyze_candidates(const CFF_Params& params, CFF_Result& result)
   for (auto edge_rank : node0.edges)
   {
      const Edge& edge = params.network.edges[edge_rank];
+     //Do not exclude already connected nodes with a smaller channel size than the wanted one
+     if(edge.capacity<params.config.minEndpointCap)
+         continue;
      int other_side = edge.side[0].node_rank==params.node0_rank? 1:0;
       already_connected_ranks.insert(edge.side[other_side].node_rank);
   }

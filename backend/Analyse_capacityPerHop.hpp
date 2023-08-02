@@ -35,7 +35,10 @@ typedef enum
 {
     INBOUND=0,
     OUTBOUND=1,
-    COUNT=2
+    BOTH=2,
+    BOTH_AVG=3,
+    BOTH_BALANCED=4,
+    COUNT=5
 } LiquidityDirection;
 
 /*

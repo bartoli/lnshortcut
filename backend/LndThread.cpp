@@ -109,9 +109,9 @@ void LndThread::_getChanInfo()
             qWarning()<<"Channel "<<channel_id<<" has invalid max_htlc<min_htlc";
         }*/
         uint64_t reserve = 25000; //min to avoid getting the channel 'stuck' because of too low balance
-        uint64_t optimal_max_htlc = local_balance;
-        if(optimal_max_htlc<=0)
-            optimal_max_htlc = reserve;//min_htlc
+        uint64_t optimal_max_htlc = local_balance-reserve;
+        if(optimal_max_htlc<0)
+            optimal_max_htlc = 0;//min_htlc
         if(optimal_max_htlc>capacity-reserve)
             optimal_max_htlc = capacity-reserve;
         uint64_t htlc_delta = llabs((int64_t)max_htlc_msat/1000 - (int64_t)optimal_max_htlc);
