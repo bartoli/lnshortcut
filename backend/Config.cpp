@@ -31,6 +31,7 @@ Config::Config()
     min_chan_size_db.insert(10000000, "031015a7839468a3c266d662d5bb21ea4cea24226936e2864a7ca4f2c3939836e0");// Breez
     min_chan_size_db.insert(10000000, "03037dc08e9ac63b82581f79b662a4d0ceca8a8ca162b1af3551595b8f2d97b70a");// river Financial 1
     min_chan_size_db.insert(10000000, "03dc686001f9b1ff700dfb8917df70268e1919433a535e1fb0767c19223509ab57");// cyberhub
+    min_chan_size_db.insert(10000000, "0299797daa21faa6e4151517b286c41d4c7a8cb21fbfba59ca3bcd21a9f8392bd4");// coinhodler04108
     min_chan_size_db.insert(16777215, "03d06758583bb5154774a6eb221b1276c9e82d65bbaceca806d90e20c108f4b1c7");// yalls.org TOR
     min_chan_size_db.insert(16777215, "0288be11d147e1525f7f234f304b094d6627d2c70f3313d7ba3696887b261c4447");// yalls.org clearnet
 

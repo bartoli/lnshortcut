@@ -47,7 +47,8 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
       qint32 last_update = node_object.value("last_update").toInt();
 
       //filter nodes based on their info
-      if(last_update<=0/*now-(3600*100)*/|| node_addresses.isEmpty()/* || node_features.isEmpty()*/)
+      auto now = QDateTime::currentSecsSinceEpoch();
+      if(last_update<=now-(3600*60)|| node_addresses.isEmpty()/* || node_features.isEmpty()*/)
       {
         //Nodes we know exist but could not reach? (only when tor is disabled?)
         config.ignored_routing_nodes.insert(pubkey);

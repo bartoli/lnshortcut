@@ -1,5 +1,6 @@
 #include <NetworkSummary.hpp>
 #include <Config.hpp>
+#include "cff.hpp"
 
 /*
  * Returns a pre-filtered network summary,

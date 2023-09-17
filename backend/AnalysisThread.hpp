@@ -44,7 +44,7 @@ typedef struct
   //number of nodes reach for each new hop level
   std::vector<int> reachable_nodes;
   std::vector<qint64> reachable_capacity;
-} NodeReach;
+} NI_NodeReach;
 
 typedef struct
 {
@@ -55,7 +55,7 @@ typedef struct
     qint64 min_chan_size;
     qint64 avec_chan_size;
     qint64 max_chan_size;
-    NodeReach node_reach;
+    NI_NodeReach node_reach;
 } NodeInfoResult;
 
 #endif // ANALYSISTHREAD_HPP

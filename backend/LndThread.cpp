@@ -120,6 +120,7 @@ void LndThread::_getChanInfo()
           qWarning()<<"Channel "<<channel_id<<"/"<<chan_point<<" has wrong max htlc ("<<max_htlc_msat/1000<<", should be "<<optimal_max_htlc<<", local balance is "<<local_balance<<")";
           if(max_delta < htlc_delta)
           {
+              //TODO : favoir upgrades that increase max htlc to avoid missing routes
               max_delta = htlc_delta;
               chosen_chan_point = chan_point;
               chosen_base_fee_msat = nodePolicyObject.value("fee_base_msat").toString();

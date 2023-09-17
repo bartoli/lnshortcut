@@ -22,6 +22,7 @@ SOURCES = main.cpp \
     ResultPool.cpp \
     WorkLauncher.cpp \
     analyze_realShortcuts.cpp \
+    cff.cpp \
     sats4probes.cpp
 
 # Directories
@@ -43,6 +44,7 @@ HEADERS += \
     ResultPool.hpp \
     WorkLauncher.hpp \
     analyze_realShortcuts.hpp \
+    cff.hpp \
     sats4probes.hpp
 
 #link for cpprest

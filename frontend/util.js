@@ -130,8 +130,14 @@ function node_advice()
       result_html += "<br>For best median cost in inbound direction:<br>"
       result_html += json.inBestCandidateForCost+ "<br>" + json.inBestMedianCost/1000.0+"sats<br>";
 
-      
-
+      result_html += "<br><br>BETA<br>"+json.tmpBestCandidate+ "<br>" +
+        "reaches +"+(json.tmpNewNodes)+"/"+(json.tmpNewNodes2)+" nodes<br>";
+      result_html += json.tmp2BestCandidate+ "<br>" +
+        "reaches +"+(json.tmp2NewEdges)+"/"+(json.tmp2NewEdges2)+" edges<br>";
+      result_html += json.tmp3BestCandidate+ "<br>" +
+        "reaches +"+(json.tmp3cheaperNodes)+" nodes more cheaply in OUTBOUND direction<br>";
+      result_html += json.tmp4BestCandidate+ "<br>" +
+        "reaches +"+(json.tmp4cheaperNodes)+" nodes more cheaply in INBOUND direction<br>";
 
       div.innerHTML = result_html;
     }
