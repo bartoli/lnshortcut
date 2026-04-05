@@ -3,29 +3,16 @@
 
 Config::Config()
 {
-
-
-    /*ignored_endpoint_nodes = QSet<QString>(
-    {
-        //satoshibox, channel disabled half of the time, could not do initial rebalance and no traffic for more than a week
-        "03fa3be3b4528c1d588e60060d7f10e37c38f5aa02f867632a5c7b816cf5afa775",
-        //NateNate60s-node, tcp connection refused when adding as peer
-        "033a7fca1cb089b33ac232dd73c2c32aeacffe16319b72bec16208f3a9002e6d17",
-        //Satoshi Radio Lightning Node 2, Not really accepting clearnet connection
-        "03dc8f04a944b498caca1bd666d09184d5a180a50818316ea447508a5940800b40",
-        //PaymentHub, connected to us for test at 4 Msat, but disconnected. Might disconnect again?
-        "029ed7e456a53568e12f013173dc5be2a92c86302e15038d150362933b754e5d21",
-        //BitSoapBox, became inactive, then did a remote force close
-        "021607cfce19a4c5e7e6e738663dfafbbbac262e4ff76c2c9b30dbeefc35c00643",
-
-    });*/
-
+    min_chan_size_db.insert( 3999999, "032ae3168ba52314da581d6b6693c562b437a9cf805933d4d69e7801547e07302e");// LQWD-France
     min_chan_size_db.insert( 4000000, "03423790614f023e3c0cdaa654a3578e919947e4c3a14bf5044e7c787ebd11af1a");// SunnySarah
     min_chan_size_db.insert( 4000000, "033b63e4a9931dc151037acbce12f4f8968c86f5655cf102bbfa85a26bd4adc6d9");// Garlic
     min_chan_size_db.insert( 4000000, "033d8656219478701227199cbd6f670335c8d408a92ae88b962c49d4dc0e83e025");// bfx-lnd0
     min_chan_size_db.insert( 4000000, "03cde60a6323f7122d5178255766e38114b4722ede08f7c9e0c5df9b912cc201d6");// bfx-lnd1
+    min_chan_size_db.insert( 4000000, "0378a5312ca36773971df43f833b571d024fd7d5d216fbdf7e241b710714ef1be1");// OneKey
+    min_chan_size_db.insert( 4206921, "039e05e271f537cfa1c060d2364b960b85bd509ac89bae524e4a01948a07b3e8d1");// LnockOnWood
     min_chan_size_db.insert( 5000000, "035e4ff418fc8b5554c5d9eea66396c227bd429a3251c8cbc711002ba215bfc226");// WalletofSatoshi
     min_chan_size_db.insert( 5000000, "033d9e73a183c9714545f292875fb90c4372bddc9c2cc302b265d15e7969a5ed60");// NordicRails
+    min_chan_size_db.insert( 5000000, "03271338633d2d37b285dae4df40b413d8c6c791fbee7797bc5dc70812196d7d5c");// lnmarkets.com
     min_chan_size_db.insert( 6000000, "0326e692c455dd554c709bbb470b0ca7e0bb04152f777d1445fd0bf3709a2833a3");// LnCapital
     min_chan_size_db.insert( 6969420, "03c5528c628681aa17ab9e117aa3ee6f06c750dfb17df758ecabcd68f1567ad8c1");// ⚡G-Spot-21_69_420⚡
     min_chan_size_db.insert(10000000, "031015a7839468a3c266d662d5bb21ea4cea24226936e2864a7ca4f2c3939836e0");// Breez
@@ -37,6 +24,12 @@ Config::Config()
 
     //no min chan size, but doe snot accept channels (some breez intermediate node)
     min_chan_size_db.insert(20000000, "02c811e575be2df47d8b48dab3d3f1c9b0f6e16d0d40b5ed78253308fc2bd7170d");// BreezC
+    //coop closed after a few days of nice traffic. Little number of channels. does not want peers?
+    //min_chan_size_db.insert(20000000, "03c96bdfcb9d4c107385c96f1b60a3910f4f28e679fb119d8ee5e243217f717bd3");// wallet-of-UXUY
+    //tried multiple times, force coses each time. lightning terminal says 'channel stability' is bad
+    min_chan_size_db.insert(20000000, "02ddb472c8edf0624dec5544507b705aae67d42a6cc2db133ba7e843fd5ce90135");// AfricaFreeRouting
+    //can not connect to public tor address
+    min_chan_size_db.insert(20000000, "02bb5e47ee26aca1654ce092d9d06eac15d953210c737f2220e2d7e54c4f108677");// ConnectsBack
 
 
     lns_pubkey = "02c521e5e73e40bad13fb589635755f674d6a159fd9f7b248d286e38c3a46f8683";
@@ -48,6 +41,8 @@ Config::Config()
 bool Config::excludesNodeForRouting(const Node& node) const
 {
   if(node.edges.empty())
+      return true;
+  if(node.totalCapacity > 50*100000000ULL)
       return true;
 
   return false;
