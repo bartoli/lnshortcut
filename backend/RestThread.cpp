@@ -347,6 +347,10 @@ void answer_nodeadvice(const QJsonObject& request_json, json::value& response_bo
 
   response_body["tmp4BestCandidate"] = json::value(filtered_network.nodes[results.metrics[LiquidityDirection::INBOUND][RankingCategory::CHEAPER_NODES].rank].pubKey.toUtf8().constData());
   response_body["tmp4cheaperNodes"] = json::value(results.metrics[LiquidityDirection::INBOUND][RankingCategory::CHEAPER_NODES].cheaperNodes);
+
+  response_body["tmp5BestCandidate"] = json::value(filtered_network.nodes[results.metrics[LiquidityDirection::WORST_DIRECTION][RankingCategory::CHEAPER_NODES].rank].pubKey.toUtf8().constData());
+  response_body["tmp5cheaperNodes"] = json::value(results.metrics[LiquidityDirection::WORST_DIRECTION][RankingCategory::CHEAPER_NODES].cheaperNodes);
+  response_body["tmp5cheaperNodes2"] = json::value(results.metrics[LiquidityDirection::WORST_DIRECTION][RankingCategory::CHEAPER_NODES].cheaperNodes2);
 }
 
 void GET_nodeadvice(const QString& resource, json::value& body)

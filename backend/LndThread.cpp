@@ -31,20 +31,17 @@ void LndThread::run()
             _generateDonateInvoice(work_id, amt_sat, invoice);
             result_pool->addInvoice(work_id, invoice);
         }
-
-                            sleep(1);
-
+        sleep(10);
         if(!_configOK())
             continue;
         _getInfo();
         //optimize channels policy only once per hour
-            chan_policy_loop++;
-                                                                  if(chan_policy_loop > 3600)
+        chan_policy_loop++;
+        if(chan_policy_loop > 360)
         {
           chan_policy_loop = 0;
           _getChanInfo();
         }
-
     }
 }
 
@@ -77,6 +74,7 @@ void LndThread::_getChanInfo()
     int chosen_tld = 80;
     uint64_t fixed_max_htlc=0, max_delta=0;
 
+    //TODO : min_htlc cannot be greater than max_htlc. take effective reserve = reserve + min_htlc
     for(const QJsonValueRef chan : channels_array)
     {
         QString channel_id = chan.toObject().value("chan_id").toString();
@@ -92,7 +90,7 @@ void LndThread::_getChanInfo()
         QString node1_pubkey = responseObj2.value("node1_pub").toString();
         QString node2_pubkey = responseObj2.value("node2_pub").toString();
         QString chan_point = responseObj2.value("chan_point").toString();
-        uint64_t capacity = atoll(responseObj2.value("capacity").toString().toUtf8().constData());
+        int64_t capacity = atoll(responseObj2.value("capacity").toString().toUtf8().constData());
         bool node_is_first_side = (node1_pubkey == _nodePubkey);
         QString policy_key = node_is_first_side? "node1_policy" : "node2_policy";
         QJsonObject nodePolicyObject = responseObj2.value(policy_key).toObject();
@@ -108,10 +106,10 @@ void LndThread::_getChanInfo()
             valid = false;
             qWarning()<<"Channel "<<channel_id<<" has invalid max_htlc<min_htlc";
         }*/
-        uint64_t reserve = 25000; //min to avoid getting the channel 'stuck' because of too low balance
-        uint64_t optimal_max_htlc = local_balance-reserve;
+        int reserve = capacity/100; //min to avoid getting the channel 'stuck' because of too low balance
+        int64_t optimal_max_htlc = local_balance-reserve;
         if(optimal_max_htlc<0)
-            optimal_max_htlc = 0;//min_htlc
+            optimal_max_htlc = reserve;//min_htlc
         if(optimal_max_htlc>capacity-reserve)
             optimal_max_htlc = capacity-reserve;
         uint64_t htlc_delta = llabs((int64_t)max_htlc_msat/1000 - (int64_t)optimal_max_htlc);

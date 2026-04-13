@@ -1,4 +1,4 @@
-base_url = 'https://advisor.lnshortcut.ovh/';
+base_url = 'https://advisor.lnshortcut.xyz/';
 
 /*
 Get Json result from REST request on sub-url, and on success, apply the passed function to use it
@@ -24,7 +24,9 @@ function getRestJson(path, applyFunc)
 /* TOOLS for POST requests sendig params as json*/
 function getPostJson(json, applyFunc)
 {
-  fetch('https://advisor.lnshortcut.ovh/', {
+  //fetch('http://192.168.1.54:4343/', {
+    fetch('https://advisor.lnshortcut.xyz/', {
+
     method: 'POST',
     headers: {
       'Accept': 'application/json',
@@ -131,13 +133,15 @@ function node_advice()
       result_html += json.inBestCandidateForCost+ "<br>" + json.inBestMedianCost/1000.0+"sats<br>";
 
       result_html += "<br><br>BETA<br>"+json.tmpBestCandidate+ "<br>" +
-        "reaches +"+(json.tmpNewNodes)+"/"+(json.tmpNewNodes2)+" nodes<br>";
+        "reaches +"+(json.tmpNewNodes)+"/"+(json.tmpNewNodes2)+" nodes in WORST/BEST<br>";
       result_html += json.tmp2BestCandidate+ "<br>" +
-        "reaches +"+(json.tmp2NewEdges)+"/"+(json.tmp2NewEdges2)+" edges<br>";
+        "reaches +"+(json.tmp2NewEdges)+"/"+(json.tmp2NewEdges2)+" edges in WORST/BEST<br>";
       result_html += json.tmp3BestCandidate+ "<br>" +
         "reaches +"+(json.tmp3cheaperNodes)+" nodes more cheaply in OUTBOUND direction<br>";
       result_html += json.tmp4BestCandidate+ "<br>" +
         "reaches +"+(json.tmp4cheaperNodes)+" nodes more cheaply in INBOUND direction<br>";
+        result_html += json.tmp5BestCandidate+ "<br>" +
+        "reaches +"+(json.tmp5cheaperNodes)+"/"+(json.tmp5cheaperNodes2)+" nodes more cheaply in WORST/BEST direction<br>";
 
       div.innerHTML = result_html;
     }

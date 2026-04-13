@@ -38,17 +38,35 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
   network->nodes.reserve(nodes_array.size());
   qint32 rank=0;
   //qint64 now = time(NULL);
+  auto now = QDateTime::currentSecsSinceEpoch();
+  auto oldest_update = now-(3600*60);
+  //keep, for each node, the update date of the most reecntly updated channel. Node last_update might be older but it miht have updated channels since then
+  QMap<QString, qint32> node_channels_last_update;
+  QJsonArray edges_array = graph_object.value("edges").toArray();
+  //std::vector<Edge> edges;
+  network->edges.reserve(edges_array.size());
+  for (const QJsonValue& edge_value : edges_array)
+  {
+      QJsonObject edge_object = edge_value.toObject();
+      QString pubkey1 = edge_object.value("node1_pub").toString();
+      QString pubkey2 = edge_object.value("node2_pub").toString();
+      qint32 last_update = edge_object.value("last_update").toInt();
+      //each policy object has a last_updae, value, but the edge value seems always the max of both, no need to read them
+      auto& nclu = node_channels_last_update[pubkey1];
+      nclu = std::max(nclu, last_update);
+      auto& nclu2 = node_channels_last_update[pubkey2];
+      nclu2 = std::max(nclu2, last_update);
+  }
   for (const QJsonValue& node_value : nodes_array)
   {
       QJsonObject node_object = node_value.toObject();
       const QString pubkey = node_object.value("pub_key").toString();
       QJsonArray node_addresses = node_object.value("addresses").toArray();
       QJsonArray node_features = node_object.value("features").toArray();
-      qint32 last_update = node_object.value("last_update").toInt();
+      qint32 last_update = std::max(node_object.value("last_update").toInt(), node_channels_last_update[pubkey]);
 
       //filter nodes based on their info
-      auto now = QDateTime::currentSecsSinceEpoch();
-      if(last_update<=now-(3600*60)|| node_addresses.isEmpty()/* || node_features.isEmpty()*/)
+      if(last_update<=oldest_update|| node_addresses.isEmpty()/* || node_features.isEmpty()*/)
       {
         //Nodes we know exist but could not reach? (only when tor is disabled?)
         config.ignored_routing_nodes.insert(pubkey);
@@ -94,7 +112,7 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
       ++rank;
   }
 
-  QJsonArray edges_array = graph_object.value("edges").toArray();
+  //QJsonArray edges_array = graph_object.value("edges").toArray();
   //std::vector<Edge> edges;
   network->edges.reserve(edges_array.size());
   rank = 0;
@@ -143,12 +161,16 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
       edge.side[0].node_rank=node1_rank;
       edge.side[0].base_fee_msat = atoi(policy1.toObject().value("fee_base_msat").toString().toUtf8().constData());
       edge.side[0].feerate_msat = atoi(policy1.toObject().value("fee_rate_milli_msat").toString().toUtf8().constData());
+      edge.side[0].inbound_base_fee_msat = atoi(policy1.toObject().value("inbound_fee_base_msat").toString().toUtf8().constData());
+      edge.side[0].inbound_feerate_msat = atoi(policy1.toObject().value("inbound_fee_rate_milli_msat").toString().toUtf8().constData());
       edge.side[0].max_htlc_msat = atoll(policy1.toObject().value("max_htlc_msat").toString().toUtf8().constData());
       edge.side[0].disabled = policy1.toObject().value("disabled").toBool();
       edge.side[0].isZbf = is_zbf(policy1);
       edge.side[1].node_rank= node2_rank;
       edge.side[1].base_fee_msat = atoi(policy2.toObject().value("fee_base_msat").toString().toUtf8().constData());
       edge.side[1].feerate_msat = atoi(policy2.toObject().value("fee_rate_milli_msat").toString().toUtf8().constData());
+      edge.side[1].inbound_base_fee_msat = atoi(policy2.toObject().value("inbound_fee_base_msat").toString().toUtf8().constData());
+      edge.side[1].inbound_feerate_msat = atoi(policy2.toObject().value("inbound_fee_rate_milli_msat").toString().toUtf8().constData());
       edge.side[1].max_htlc_msat = atoll(policy2.toObject().value("max_htlc_msat").toString().toUtf8().constData());
       edge.side[1].disabled = policy2.toObject().value("disabled").toBool();
       edge.side[1].isZbf = is_zbf(policy2);
@@ -160,6 +182,8 @@ void PrefetcherThread::analyzeGraph(int block_height, const QByteArray& graphJso
       node2.edges.push_back(rank);
       node1.minChanSize = std::min(node1.minChanSize, edge.capacity);
       node2.minChanSize = std::min(node2.minChanSize, edge.capacity);
+      node1.totalCapacity += edge.capacity;
+      node2.totalCapacity += edge.capacity;
 
       if(node1.isZbf && !is_zbf(policy1))
           node1.isZbf = false;

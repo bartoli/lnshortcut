@@ -1,3 +1,6 @@
-ln4me.pro.user
+ln4me.pro.user*
 .qmake.stash
 Makefile
+moc_predefs.h
+ui_main.h
+

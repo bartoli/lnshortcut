@@ -31,6 +31,7 @@ public:
     bool isZbf=true;
     //smallest channel size of the node
     uint32_t minChanSize = INT_MAX;
+    uint64_t totalCapacity = 0;
     //node alias
     QString alias;
     //is the node allowed as endoiint? Yes unless otherwise specified
@@ -51,6 +52,8 @@ public:
     int node_rank;
     int base_fee_msat=0;
     int feerate_msat = 0;
+    int inbound_base_fee_msat=0;
+    int inbound_feerate_msat = 0;
     uint64_t max_htlc_msat = 0;
     bool disabled = false;
     bool isZbf = true;

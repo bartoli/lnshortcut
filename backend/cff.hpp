@@ -75,6 +75,7 @@ typedef struct CFF_Metric
     int newNodes = 0;
     int newNodes2 = 0;
     int cheaperNodes = 0;
+    int cheaperNodes2 = 0;
     int newEdges = 0;
     int newEdges2 = 0;
     int medianCost = INT_MAX;

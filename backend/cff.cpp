@@ -46,6 +46,13 @@ void CFF_Result::initializeResults(const CFF_Params& params)
       metric.medianCost = refReach[LiquidityDirection::OUTBOUND].median_cost_msat;
     }
     {
+      CFF_Metric& metric = metrics[LiquidityDirection::WORST_DIRECTION][RankingCategory::CHEAPER_NODES];
+      metric.rank = params.node0_rank;
+      metric.newNodes = 0;
+      metric.newEdges = 0;
+      metric.medianCost = INT_MAX;
+    }
+    {
       CFF_Metric& metric = metrics[LiquidityDirection::INBOUND][RankingCategory::NEW_EDGES];
       metric.rank = params.node0_rank;
       metric.newNodes = refReach[LiquidityDirection::INBOUND].reached_nodes;
@@ -193,12 +200,17 @@ void browse_edge(const CFF_Params& params, CFF_NodeReach& reach,
    */
    const int side_for_fee = (params.testDirection == LiquidityDirection::INBOUND? further_side : nearer_side);
    const Edge::Side& fee_side = edge.side[side_for_fee];
+   const Edge::Side& discount_side = edge.side[1-side_for_fee];
    if(fee_side.disabled)
        return;
    if(fee_side.max_htlc_msat < params.test_amt_sat*1000ULL)
        return;
 
-   const int64_t edge_cost_msat = fee_side.base_fee_msat + (fee_side.feerate_msat*params.test_amt_sat)/1000;
+   int64_t edge_cost_msat = fee_side.base_fee_msat + (fee_side.feerate_msat*params.test_amt_sat)/1000;
+   const int64_t edge_discount_msat = discount_side.inbound_base_fee_msat + (discount_side.inbound_feerate_msat*params.test_amt_sat)/1000;
+   edge_cost_msat += edge_discount_msat;
+   if(edge_cost_msat<0)
+       edge_cost_msat;
    if(current_cost_msat+edge_cost_msat > (params.max_fee_sat*1000))
    {
        //qWarning()<<"Max cost reached";
@@ -690,6 +702,24 @@ void run_CFF(const CFF_Params& params, CFF_Result& result)
                    metric.newNodes = new_reach.reached_nodes;
                    metric.newEdges = worst_new_edges;
                    metric.newEdges2 = best_new_edges;
+                   metric.medianCost = new_reach.median_cost_msat;
+                   metric.rank = reached_node_rank;
+               }
+            }
+            {//worst direction for cheapest nodes
+               int cheaper_nodes[LiquidityDirection::DIRECTION_COUNT];
+               cheaper_nodes[LiquidityDirection::OUTBOUND] = cand_reach[LiquidityDirection::OUTBOUND].cheaperNodes;
+               cheaper_nodes[LiquidityDirection::INBOUND]  = cand_reach[LiquidityDirection::INBOUND].cheaperNodes;
+               LiquidityDirection worst_direction = cheaper_nodes[LiquidityDirection::OUTBOUND]<cheaper_nodes[LiquidityDirection::INBOUND]? LiquidityDirection::OUTBOUND : LiquidityDirection::INBOUND;
+               int worst_cheaper_nodes = cheaper_nodes[worst_direction];
+               int best_cheaper_nodes = cheaper_nodes[1-worst_direction];
+               CFF_NodeReach& new_reach = cand_reach[worst_direction];
+               CFF_Metric& metric = result.metrics[LiquidityDirection::WORST_DIRECTION][RankingCategory::CHEAPER_NODES];
+               if(worst_cheaper_nodes > metric.cheaperNodes || (worst_cheaper_nodes==metric.cheaperNodes && best_cheaper_nodes>metric.cheaperNodes2))
+               {
+                   metric.newNodes = new_reach.reached_nodes;
+                   metric.cheaperNodes = worst_cheaper_nodes;
+                   metric.cheaperNodes2 = best_cheaper_nodes;
                    metric.medianCost = new_reach.median_cost_msat;
                    metric.rank = reached_node_rank;
                }

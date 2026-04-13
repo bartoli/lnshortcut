@@ -32,6 +32,11 @@
       <input type="checkbox" id="useMinChanSizeDb">Use known min chan size database<br>
       <input type="checkbox" id="guessMinChanSize">Excludes nodes which might not accept this channel size<br>
       <input type="number" id="candidateMasMedianFee"></input> ppm for max target node median fee.<br>
+      Simulations<br>
+      Exclude existing channels to<br>
+      <input type="text" id="excluded_peer"><br>
+      Simulate connection to<br>
+      <input type="text" id="simulated_peer">
       <br>
       <input type="button" value="Get channel advice" onclick="node_advice()">
     </form>
